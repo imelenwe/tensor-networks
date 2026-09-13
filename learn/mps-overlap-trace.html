@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPS Overlap Trace</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F0; --surface:#FFFFFF; --surface2:#E3E8E6; --ink:#1B2229; --muted:#5B6570;
+    --line:#B9C2C4; --border:#D3D9D7; --accent:#B5702A; --accent-soft:#EBD3B4;
+    --accent2:#2F7A72; --accent2-soft:#C9E3DF; --mono-bg:#F5F3EE; --shadow:0 1px 2px rgba(20,24,29,.06), 0 8px 24px rgba(20,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181D; --surface:#1B2129; --surface2:#212A33; --ink:#ECE9E1; --muted:#93A0AB;
+      --line:#4A5560; --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+      --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A; --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181D; --surface:#1B2129; --surface2:#212A33; --ink:#ECE9E1; --muted:#93A0AB;
+    --line:#4A5560; --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+    --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A; --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    padding:40px 20px 90px;
+  }
+  .page{max-width:800px; margin:0 auto; display:flex; flex-direction:column; gap:30px;}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 10px;
+  }
+  h1{font-size:clamp(28px,4vw,36px); margin:0 0 8px; font-weight:700; text-wrap:balance;}
+  .sub{color:var(--muted); font-size:15.5px; line-height:1.55; max-width:66ch; margin:0;}
+  code{font-family:'IBM Plex Mono',monospace; font-size:.92em; background:var(--mono-bg); padding:1px 5px; border-radius:4px;}
+
+  .panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:22px 24px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:16px;
+  }
+  .panel h2{margin:0; font-size:19px;}
+  .panel h3{margin:0; font-size:15px;}
+  .panel p{margin:0; color:var(--muted); font-size:14.5px; line-height:1.65; max-width:66ch;}
+  .panel .kicker{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); margin:0;
+  }
+
+  /* --- "what is an axis" mini grid --- */
+  .axis-demo{display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap;}
+  .axis-vert-label{
+    writing-mode:vertical-rl; transform:rotate(180deg); font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px; color:var(--accent); font-weight:600; padding-bottom:6px; text-align:center;
+  }
+  .axis-col{display:flex; flex-direction:column; gap:6px;}
+  .axis-horiz-label{
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--accent2); font-weight:600; text-align:center;
+  }
+  table.grid{border-collapse:collapse;}
+  table.grid td{
+    width:42px; height:36px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:14px;
+    border:1px solid var(--border); background:var(--mono-bg); font-variant-numeric:tabular-nums;
+  }
+
+  /* --- generic labeled matrix card --- */
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .card{background:var(--mono-bg); border:1px solid var(--border); border-radius:10px; padding:12px 14px;}
+  .card .clabel{font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; margin-bottom:2px;}
+  .card.psi .clabel{color:var(--accent);}
+  .card.phi .clabel{color:var(--accent2);}
+  .card.neutral .clabel{color:var(--ink);}
+  .card .cshape{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:2px;}
+  .card .caxes{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:8px; line-height:1.5;}
+  .card .caxes b{color:var(--ink); font-weight:600;}
+  .card pre{margin:0; font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:1.35; color:var(--ink); white-space:pre;}
+
+  .flow{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    font-family:'IBM Plex Mono',monospace; font-size:13.5px; font-variant-numeric:tabular-nums;
+    background:var(--mono-bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px;
+    overflow-x:auto;
+  }
+  .flow .val{white-space:pre; line-height:1.35; color:var(--ink);}
+  .flow .shape{display:block; font-size:11px; color:var(--muted); margin-top:3px;}
+  .flow .arrow{display:flex; flex-direction:column; align-items:center; color:var(--muted); font-size:11px; min-width:60px;}
+  .flow .arrow .call{color:var(--accent); font-weight:600;}
+
+  .divider{height:1px; background:var(--border); border:none; margin:2px 0;}
+
+  /* --- axis correspondence table --- */
+  table.axis-table{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:12.5px;}
+  .axis-table th, .axis-table td{padding:9px 11px; border:1px solid var(--border); text-align:left; vertical-align:top;}
+  .axis-table th{color:var(--muted); font-weight:600; background:var(--surface2); font-size:11px; text-transform:uppercase; letter-spacing:.03em;}
+  .axis-table td.rowlabel{font-weight:600; background:var(--surface2); white-space:nowrap;}
+  .axis-table td.hit-psi{background:var(--accent-soft);}
+  .axis-table td.hit-phi{background:var(--accent2-soft);}
+  .axis-table td.dash{color:var(--muted); text-align:center;}
+  .axis-table tr.result-row td{background:var(--surface2); font-weight:600;}
+  .axis-table tr.result-row td.rowlabel{background:var(--ink); color:var(--bg);}
+  .call-label{
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600;
+    background:var(--ink); color:var(--bg); padding:3px 9px; border-radius:6px; margin-bottom:4px;
+  }
+  .table-wrap{overflow-x:auto;}
+
+  .site-block{display:flex; flex-direction:column; gap:16px;}
+  .site-heading{
+    display:flex; align-items:center; gap:10px; font-family:'IBM Plex Mono',monospace;
+    font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
+  }
+  .site-heading .num{
+    width:24px; height:24px; border-radius:50%; background:var(--ink); color:var(--bg);
+    display:flex; align-items:center; justify-content:center; font-size:12px;
+  }
+
+  .diagram-wrap{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 8px 10px; box-shadow:var(--shadow);}
+  svg{display:block; width:100%; height:auto;}
+  .diagram-legend{display:flex; gap:18px; justify-content:center; padding:6px 12px 4px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); flex-wrap:wrap;}
+  .diagram-legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{width:10px; height:10px; border-radius:3px; display:inline-block;}
+  .node{fill:var(--surface); stroke:var(--line); stroke-width:2;}
+  .node.psi{stroke:var(--accent);}
+  .node.phi{stroke:var(--accent2);}
+  .nlabel{font-family:'IBM Plex Mono',monospace; font-size:13px; fill:var(--ink); text-anchor:middle; dominant-baseline:middle;}
+  .edge{stroke:var(--line); stroke-width:2;}
+  .edge.dashed{stroke-dasharray:4 4;}
+  .elabel{font-family:'IBM Plex Mono',monospace; font-size:11.5px; fill:var(--muted); text-anchor:middle;}
+
+  .setup{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .state-card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow:var(--shadow);}
+  .state-card .tag{display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; margin-bottom:10px;}
+  .tag.psi{background:var(--accent-soft); color:var(--accent);}
+  .tag.phi{background:var(--accent2-soft); color:var(--accent2);}
+  .state-card .vec{font-family:'IBM Plex Mono',monospace; font-size:14.5px; font-variant-numeric:tabular-nums; background:var(--mono-bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px;}
+  .state-card .note{color:var(--muted); font-size:13px; margin-top:8px; line-height:1.5;}
+
+  .result-banner{display:flex; flex-wrap:wrap; align-items:center; gap:14px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:10px; padding:14px 16px; font-family:'IBM Plex Mono',monospace; font-size:13.5px;}
+  .result-banner .rlabel{color:var(--muted); font-family:'IBM Plex Sans',sans-serif; font-size:12px; text-transform:uppercase; letter-spacing:.06em;}
+  .result-banner b{color:var(--ink); font-size:15px;}
+  .match{color:var(--accent); font-weight:600;}
+
+  @media (max-width:560px){
+    .setup{grid-template-columns:1fr;}
+    .cards{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header>
+    <p class="eyebrow">Tensor networks · full worked reference</p>
+    <h1>MPS Overlap Trace</h1>
+    <p class="sub">A complete, axis-by-axis trace of how <code>mps_overlap(tensors_psi, tensors_phi)</code> computes ⟨φ|ψ⟩ — every <code>tensordot</code> call spelled out: which axis, which meaning, which size, why it matches.</p>
+  </header>
+
+  <section class="panel">
+    <p class="kicker">Step 0 — foundation</p>
+    <h2>What "axis" means</h2>
+    <p>An array's shape is a list of its dimensions. A 2-D array has two of them, numbered starting at 0. <b>Axis 0</b> moves down through the rows. <b>Axis 1</b> moves across the columns. Every <code>tensordot</code> call is really just: "pick an axis on the first array, pick an axis on the same size on the second, multiply matching entries along it, and add them up."</p>
+    <div class="axis-demo">
+      <div class="axis-vert-label">axis 0<br>↓<br>(2 rows)</div>
+      <div class="axis-col">
+        <div class="axis-horiz-label">axis 1 → (3 columns)</div>
+        <table class="grid">
+          <tr><td>1</td><td>2</td><td>3</td></tr>
+          <tr><td>4</td><td>5</td><td>6</td></tr>
+        </table>
+      </div>
+    </div>
+    <p>This example array has shape <code>(2, 3)</code>: 2 positions along axis 0, 3 along axis 1. When two arrays share a matching axis size, <code>tensordot</code> can contract (sum over) that pair of axes — that's the entire mechanism behind everything below.</p>
+  </section>
+
+  <section class="panel">
+    <p class="kicker">Step 1 — tensordot itself, no quantum states yet</p>
+    <h2>Contracting one axis → ordinary matrix multiply</h2>
+    <p>Two plain matrices. We'll contract <b>A's axis 1</b> (its 3 columns) against <b>B's axis 0</b> (its 3 rows) — both size 3, so they can be matched and summed over.</p>
+    <div class="cards">
+      <div class="card neutral"><div class="clabel">A</div><div class="cshape">shape (2, 3)</div>
+        <div class="caxes">axis 0 = rows <b>(2)</b> · axis 1 = columns <b>(3)</b> ← contracting this one</div>
+        <pre>[[1 2 3]
+ [4 5 6]]</pre></div>
+      <div class="card neutral"><div class="clabel">B</div><div class="cshape">shape (3, 2)</div>
+        <div class="caxes">axis 0 = rows <b>(3)</b> ← contracting this one · axis 1 = columns <b>(2)</b></div>
+        <pre>[[1 0]
+ [0 1]
+ [2 2]]</pre></div>
+    </div>
+    <div class="flow">
+      <span class="val">A @ B<span class="shape">ordinary matrix multiply</span></span>
+      <span class="arrow"><span class="call">=</span></span>
+      <span class="val">[[ 7, 8]
+ [16,17]]</span>
+    </div>
+    <div class="flow">
+      <span class="val">tensordot(A, B, axes=([1],[0]))<span class="shape">A's axis 1 (size 3) ↔ B's axis 0 (size 3)</span></span>
+      <span class="arrow"><span class="call">=</span></span>
+      <span class="val">[[ 7, 8]
+ [16,17]]<span class="shape">✓ identical</span></span>
+    </div>
+
+    <hr class="divider">
+
+    <h3>Contracting every axis → one number</h3>
+    <p>Same idea, but now both axes on both sides get contracted, leaving nothing uncontracted — the result collapses all the way down to a single number.</p>
+    <div class="cards">
+      <div class="card neutral"><div class="clabel">C</div><div class="cshape">shape (2, 2)</div>
+        <div class="caxes">axis 0 <b>(2)</b> ← contracted · axis 1 <b>(2)</b> ← contracted</div>
+        <pre>[[1 2]
+ [3 4]]</pre></div>
+      <div class="card neutral"><div class="clabel">D</div><div class="cshape">shape (2, 2)</div>
+        <div class="caxes">axis 0 <b>(2)</b> ← contracted · axis 1 <b>(2)</b> ← contracted</div>
+        <pre>[[5 6]
+ [7 8]]</pre></div>
+    </div>
+    <div class="flow">
+      <span class="val">sum(C * D)<span class="shape">multiply entrywise, add everything up</span></span>
+      <span class="arrow"><span class="call">=</span></span>
+      <span class="val">70</span>
+    </div>
+    <div class="flow">
+      <span class="val">tensordot(C, D, axes=([0,1],[0,1]))<span class="shape">both of C's axes ↔ both of D's axes</span></span>
+      <span class="arrow"><span class="call">=</span></span>
+      <span class="val">70<span class="shape">✓ identical</span></span>
+    </div>
+    <p style="font-style:italic;">This second pattern — contracting two axes in one call — is exactly what happens at every site in the real trace below.</p>
+  </section>
+
+  <section class="panel">
+    <p class="kicker">Step 2 — where A₀, A₁, B₀*, B₁* actually come from</p>
+    <h2>Naming things before using them</h2>
+
+    <p><b>First, about the shape of ψ.</b> Above, ψ is written as <code>[0.7071, 0, 0, 0.7071]</code> — that's just how a flat Python list prints, with commas, left to right. It is <i>not</i> a "1×4 row" or a "4×1 column" — those are both 2-dimensional shapes, and ψ starts out as neither. In code it's a plain 1-dimensional list of 4 numbers, shape <code>(4,)</code> — no rows, no columns at all yet. Textbooks draw a quantum state as a column purely as a drawing habit; the code has no such thing until we deliberately create it. That happens on the very first real line of <code>statevector_to_mps</code>:</p>
+    <div class="flow">
+      <span class="val">psi<span class="shape">shape (4,) — flat, no rows or columns</span></span>
+      <span class="arrow"><span class="call">.reshape(2, -1)</span></span>
+      <span class="val">[[0.7071, 0     ]
+ [0,      0.7071]]<span class="shape">shape (2, 2) — NOW it has rows and columns</span></span>
+    </div>
+
+    <p><b>Second, where the letters A and B come from.</b> They're not part of your code at all — they're just labels this page uses. Running <code>statevector_to_mps(psi, 2)</code> returns a Python list with 2 entries; this page calls those entries <b>A₀</b> and <b>A₁</b> (in your code, that's <code>tensors_psi[0]</code> and <code>tensors_psi[1]</code>). Running the same function on φ gives <code>tensors_phi[0]</code> and <code>tensors_phi[1]</code>, which this page calls <b>B₀</b> and <b>B₁</b> — and once conjugated (multiplied by <code>np.conj</code> inside <code>mps_overlap</code>), <b>B₀*</b> and <b>B₁*</b>. The star just means "conjugated," nothing else.</p>
+
+    <p><b>Third, "site."</b> A site is just a position along the qubit chain — site 0 is qubit 0, site 1 is qubit 1. It's the same idea as the loop variable <code>q</code> back in <code>statevector_to_mps</code>, only now walking two chains (ψ's and φ's) at matching positions.</p>
+
+    <p><b>Fourth, "bond."</b> When <code>statevector_to_mps</code> ran its SVD at each site, the number of singular values it kept became <code>new_bond</code> in the code — and that number is a real connection between one qubit's tensor and its neighbor's. This page calls that connection a <b>bond</b>. It's just one number: how many independent channels link two neighboring tensors. Nothing more mysterious than that.</p>
+
+    <p>Putting all four together — every one of A₀, A₁, B₀, B₁ has exactly 3 axes, always in this order:</p>
+    <div class="cards">
+      <div class="card psi" style="grid-column:1/-1;">
+        <div class="clabel">example: A₁ = tensors_psi[1]</div>
+        <div class="cshape">shape (2, 2, 1)</div>
+        <div class="caxes"><b>axis 0</b> = left bond, size 2 — the connection coming in from site 0 &nbsp;·&nbsp; <b>axis 1</b> = physical, size 2 always — this qubit's own 0/1 &nbsp;·&nbsp; <b>axis 2</b> = right bond, size 1 — there's no site 2, so this is a trivial placeholder connection</div>
+      </div>
+    </div>
+    <p>The running result <code>E</code> only ever has <b>2</b> axes — axis 0 tracks "how far we've absorbed into ψ's chain," axis 1 tracks the same for φ's chain. Every table below names, for every tensor, which of its axes is which — nothing is left for you to infer.</p>
+  </section>
+
+  <section class="setup">
+    <div class="state-card">
+      <span class="tag psi">ψ</span>
+      <div class="vec">[0.7071, 0, 0, 0.7071]</div>
+      <p class="note">(|00⟩ + |11⟩)/√2 — a Bell state</p>
+    </div>
+    <div class="state-card">
+      <span class="tag phi">φ</span>
+      <div class="vec">[1, 0, 0, 0]</div>
+      <p class="note">|00⟩ — a plain product state</p>
+    </div>
+  </section>
+
+  <section class="diagram-wrap">
+    <svg viewBox="0 0 560 220" role="img" aria-label="Tensor network ladder diagram for the MPS overlap">
+      <line class="edge dashed" x1="30" y1="60" x2="80" y2="60"/>
+      <line class="edge dashed" x1="480" y1="60" x2="530" y2="60"/>
+      <line class="edge dashed" x1="30" y1="160" x2="80" y2="160"/>
+      <line class="edge dashed" x1="480" y1="160" x2="530" y2="160"/>
+      <text class="elabel" x="55" y="48">1</text>
+      <text class="elabel" x="505" y="48">1</text>
+      <text class="elabel" x="55" y="148">1</text>
+      <text class="elabel" x="505" y="148">1</text>
+      <line class="edge" x1="106" y1="60" x2="254" y2="60"/>
+      <line class="edge" x1="106" y1="160" x2="254" y2="160"/>
+      <text class="elabel" x="180" y="48">2</text>
+      <text class="elabel" x="180" y="148">2</text>
+      <line class="edge" x1="80" y1="86" x2="80" y2="134"/>
+      <line class="edge" x1="280" y1="86" x2="280" y2="134"/>
+      <text class="elabel" x="64" y="112">2</text>
+      <text class="elabel" x="296" y="112">2</text>
+      <circle class="node psi" cx="80" cy="60" r="26"/>
+      <circle class="node psi" cx="280" cy="60" r="26"/>
+      <circle class="node phi" cx="80" cy="160" r="26"/>
+      <circle class="node phi" cx="280" cy="160" r="26"/>
+      <text class="nlabel" x="80" y="61">A₀</text>
+      <text class="nlabel" x="280" y="61">A₁</text>
+      <text class="nlabel" x="80" y="161">B₀*</text>
+      <text class="nlabel" x="280" y="161">B₁*</text>
+    </svg>
+    <div class="diagram-legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>ψ chain (top)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>φ* chain (bottom, conjugated)</span>
+      <span>dashed = trivial size-1 boundary</span>
+      <span>vertical lines = physical index, contracted between rows</span>
+      <span>horizontal lines = bond, contracted between columns</span>
+    </div>
+  </section>
+
+  <section class="panel site-block">
+    <div class="site-heading"><span class="num">1</span> Site 0</div>
+
+    <div class="cards">
+      <div class="card psi"><div class="clabel">A₀</div><div class="cshape">shape (1, 2, 2)</div>
+        <div class="caxes">axis 0 = ψ left bond <b>(1)</b> · axis 1 = physical <b>(2)</b> · axis 2 = ψ right bond <b>(2)</b></div>
+        <pre>[[[1. 0.]
+  [0. 1.]]]</pre></div>
+      <div class="card phi"><div class="clabel">B₀* (conjugated)</div><div class="cshape">shape (1, 2, 2)</div>
+        <div class="caxes">axis 0 = φ left bond <b>(1)</b> · axis 1 = physical <b>(2)</b> · axis 2 = φ right bond <b>(2)</b></div>
+        <pre>[[[1. 0.]
+  [0. 1.]]]</pre></div>
+    </div>
+
+    <div>
+      <span class="call-label">call 1 · tensordot(E, A₀, axes=([0],[0]))</span>
+      <div class="table-wrap">
+        <table class="axis-table">
+          <tr><th>tensor</th><th>axis 0</th><th>axis 1</th><th>axis 2</th></tr>
+          <tr><td class="rowlabel">E (in)</td><td class="hit-psi">ψ bond so far · size 1</td><td>φ bond so far · size 1</td><td class="dash">—</td></tr>
+          <tr><td class="rowlabel">A₀ (in)</td><td class="hit-psi">ψ left bond · size 1</td><td>physical · size 2</td><td>ψ right bond · size 2</td></tr>
+          <tr class="result-row"><td class="rowlabel">→ result</td><td>φ bond so far · size 1<br><small>(from E, axis 1)</small></td><td>physical · size 2<br><small>(from A₀, axis 1)</small></td><td>ψ right bond · size 2<br><small>(from A₀, axis 2)</small></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="flow">
+      <span class="val">[[1]]<span class="shape">E, shape (1,1)</span></span>
+      <span class="arrow"><span class="call">→</span></span>
+      <span class="val">[[[1,0],[0,1]]]<span class="shape">result, shape (1,2,2)</span></span>
+    </div>
+
+    <div>
+      <span class="call-label">call 2 · tensordot(result, B₀*, axes=([0,1],[0,1]))</span>
+      <div class="table-wrap">
+        <table class="axis-table">
+          <tr><th>tensor</th><th>axis 0</th><th>axis 1</th><th>axis 2</th></tr>
+          <tr><td class="rowlabel">result (in)</td><td class="hit-phi">φ bond so far · size 1</td><td class="hit-phi">physical (ψ's value) · size 2</td><td>ψ right bond · size 2</td></tr>
+          <tr><td class="rowlabel">B₀* (in)</td><td class="hit-phi">φ left bond · size 1</td><td class="hit-phi">physical (φ's value) · size 2</td><td>φ right bond · size 2</td></tr>
+          <tr class="result-row"><td class="rowlabel">→ new E</td><td>ψ bond so far · size 2<br><small>(from result, axis 2)</small></td><td>φ bond so far · size 2<br><small>(from B₀*, axis 2)</small></td><td class="dash">—</td></tr>
+        </table>
+      </div>
+      <p style="margin-top:2px;">Contracting axis 1 on both sides together is the actual "multiply matching qubit-0 basis states and sum" step — the real inner-product arithmetic for this site.</p>
+    </div>
+    <div class="flow">
+      <span class="val">[[[1,0],[0,1]]]<span class="shape">result, shape (1,2,2)</span></span>
+      <span class="arrow"><span class="call">→</span></span>
+      <span class="val">[[1,0],[0,1]]<span class="shape">new E, shape (2,2)</span></span>
+    </div>
+  </section>
+
+  <section class="panel site-block">
+    <div class="site-heading"><span class="num">2</span> Site 1</div>
+
+    <div class="cards">
+      <div class="card psi"><div class="clabel">A₁</div><div class="cshape">shape (2, 2, 1)</div>
+        <div class="caxes">axis 0 = ψ left bond <b>(2)</b> · axis 1 = physical <b>(2)</b> · axis 2 = ψ right bond <b>(1)</b></div>
+        <pre>[[[0.7071]
+  [0.    ]]
+
+ [[0.    ]
+  [0.7071]]]</pre></div>
+      <div class="card phi"><div class="clabel">B₁* (conjugated)</div><div class="cshape">shape (2, 2, 1)</div>
+        <div class="caxes">axis 0 = φ left bond <b>(2)</b> · axis 1 = physical <b>(2)</b> · axis 2 = φ right bond <b>(1)</b></div>
+        <pre>[[[1.]
+  [0.]]
+
+ [[0.]
+  [0.]]]</pre></div>
+    </div>
+
+    <div>
+      <span class="call-label">call 1 · tensordot(E, A₁, axes=([0],[0]))</span>
+      <div class="table-wrap">
+        <table class="axis-table">
+          <tr><th>tensor</th><th>axis 0</th><th>axis 1</th><th>axis 2</th></tr>
+          <tr><td class="rowlabel">E (in)</td><td class="hit-psi">ψ bond so far · size 2</td><td>φ bond so far · size 2</td><td class="dash">—</td></tr>
+          <tr><td class="rowlabel">A₁ (in)</td><td class="hit-psi">ψ left bond · size 2</td><td>physical · size 2</td><td>ψ right bond · size 1</td></tr>
+          <tr class="result-row"><td class="rowlabel">→ result</td><td>φ bond so far · size 2<br><small>(from E, axis 1)</small></td><td>physical · size 2<br><small>(from A₁, axis 1)</small></td><td>ψ right bond · size 1<br><small>(from A₁, axis 2)</small></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="flow">
+      <span class="val">[[1,0],[0,1]]<span class="shape">E, shape (2,2)</span></span>
+      <span class="arrow"><span class="call">→</span></span>
+      <span class="val">[[[.7071],[0]],
+ [[0],[.7071]]]<span class="shape">result, shape (2,2,1)</span></span>
+    </div>
+
+    <div>
+      <span class="call-label">call 2 · tensordot(result, B₁*, axes=([0,1],[0,1]))</span>
+      <div class="table-wrap">
+        <table class="axis-table">
+          <tr><th>tensor</th><th>axis 0</th><th>axis 1</th><th>axis 2</th></tr>
+          <tr><td class="rowlabel">result (in)</td><td class="hit-phi">φ bond so far · size 2</td><td class="hit-phi">physical (ψ's value) · size 2</td><td>ψ right bond · size 1</td></tr>
+          <tr><td class="rowlabel">B₁* (in)</td><td class="hit-phi">φ left bond · size 2</td><td class="hit-phi">physical (φ's value) · size 2</td><td>φ right bond · size 1</td></tr>
+          <tr class="result-row"><td class="rowlabel">→ final E</td><td>ψ right bond · size 1<br><small>(from result, axis 2)</small></td><td>φ right bond · size 1<br><small>(from B₁*, axis 2)</small></td><td class="dash">—</td></tr>
+        </table>
+      </div>
+      <p style="margin-top:2px;">B₁* has real zeros in it this time, so this contraction genuinely narrows the value down — it isn't just passing numbers through unchanged like site 0 did.</p>
+    </div>
+    <div class="flow">
+      <span class="val">result, shape (2,2,1)</span>
+      <span class="arrow"><span class="call">→</span></span>
+      <span class="val">[[0.7071]]<span class="shape">final E, shape (1,1)</span></span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="kicker">Result</p>
+    <h2>Both boundary bonds are size 1 — E is now a single number</h2>
+    <p><code>E[0,0]</code> pulls that number out. Compare it against computing ⟨φ|ψ⟩ directly, with no tensor network involved at all:</p>
+    <div class="result-banner">
+      <div><div class="rlabel">mps_overlap(tensors_psi, tensors_phi)</div><b>0.7071067811865475</b></div>
+      <div><div class="rlabel">np.vdot(phi, psi) — exact</div><b>0.7071067811865475</b></div>
+      <div class="match">✓ exact match</div>
+    </div>
+  </section>
+</div>
+
+</body>
+</html>
