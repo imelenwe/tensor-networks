@@ -8,18 +8,23 @@ Python + Qiskit, env `qgss26`. 100% classical sim, no QPU involved.
 
 ## v1 scope
 
-1D XYZ chain (Eq. 1) only, validated against exact diagonalization (currently `L=6`).
+1D XYZ chain (Eq. 1). Small-`L` pieces validated against exact diagonalization (`L=6`); training now runs fully MPS-native at `L=50`.
 
-Implementation lives in `AQC/aqc-phase1-sandbox.ipynb`.
+Implementation lives in `AQC/aqctensor-algorithm1.ipynb`.
 
-## Steps
+## Steps (paper's Algorithm 1 = steps 10, 11-13, 14 below)
 
 1. [x] Hamiltonian + exact time-evolved state — ground truth (`get_hamiltonian`, `get_Neel_State`, `timeevolution`)
 2. [x] Bond gate (Fig. 3) — verified against exact `expm` (`get_bond_gate_for_hxyz`)
-3. [x] Second-order Trotter circuit (Fig. 4) — generates the target state; fused even/odd schedule + per-site field term, verified 2nd-order convergence (`second_order_trotter_circuit`)
-4. [x] Brickwork Ansatz circuit (Fig. 7/8) — trainable circuit, mirrors the Trotter circuit's pair schedule (`aqc_cnot_block`, `aqc_triplet_block`, `aqc_init_layer`, `aqc_field_layer`, `aqc_parametrized_circuit`)
-5. [ ] Trotter-init — seed the Ansatz so it starts out identical to the Trotter circuit
-6. [ ] Cost function — fidelity between Ansatz output and target state
-7. [ ] Optimizer (ADAM → L-BFGS-B) — this step *is* AQC
-8. [ ] Compare optimized Ansatz vs. Trotter at equal depth (mini Fig. 9)
-9. [ ] Later: real MPS overlap (not exact statevector) + scale toward the paper's qubit counts. Appendix A models (NNN chain, 2D hex lattice) deferred indefinitely.
+3. [x] Second-order Trotter circuit (Fig. 4) — generates the target state (`second_order_trotter_circuit`)
+4. [x] Brickwork Ansatz circuit (Fig. 7/8) — trainable circuit, mirrors the Trotter circuit's pair schedule (`aqc_parametrized_circuit` + helpers)
+5. [x] Trotter-init — seed the Ansatz so it starts out identical to the Trotter circuit (`trotter_aqc_init_params`)
+6. [x] Cost function (`1 - fidelity`) — exact-statevector version (`aqc_cost`)
+7. [x] Optimizer (`L-BFGS-B`) + first real comparison, small `L` (`train_aqc`, `compare_aqc_vs_trotter`)
+8. [x] MPS-native overlap, verified exact match against statevector fidelity (`statevector_to_mps`, `mps_overlap`, `aqc_cost_using_mps`)
+9. [x] MPS-native gate application (`apply_1q_gate_to_mps_tensor`, `apply_2q_gate_mps_tensor`, `circuit_to_mps_tensors`) — verified against `Statevector.evolve`
+10. [x] TEBD: build the target state at scale as an MPS, no `2^L` statevector (`get_Neel_State_as_mps`, `circuit_to_mps_tensors` on the Trotter circuit) — **Algorithm 1, step 1**
+11. [x] Fully MPS-native cost function — AQC ansatz output built directly as MPS, no `Statevector.evolve` anywhere (`aqc_cost_tebd_mps`)
+12. [x] Training driver with no exact diagonalization — takes a pre-built TEBD target instead of computing it internally (`train_aqc_mps_at_scale`) — **Algorithm 1, step 2**
+13. [x] Ran training end-to-end at `L=50`: shallow ansatz (`steps_aqc=2`, 1826 params) trained against a deep TEBD target (`steps_tebd=10`) — **fidelity = 0.999495**, cost = 0.000505. Trained circuit: depth 22, 369 two-qubit gates vs. Trotter's depth 41, 1545 two-qubit gates (~2.3x fewer gates, ~1.9x shallower). Trained parameters persisted to a dated `.npz` file (`trained_aqc_L{L}_stepsaqc{steps_aqc}_stepstebd{steps_tebd}_{timestamp}.npz`) so the circuit can be reloaded/inspected without rerunning the ~24 min optimization.
+14. [ ] **(Algorithm 1, step 3)** Append `k` additional Trotter steps onto the trained circuit `V(theta0)` — not yet started. Needs: (a) the append function itself, (b) a clear explanation of *why* this is valid (appending exact Trotter steps to an already-trained circuit preserves/improves fidelity because it's unitary evolution composed with unitary evolution — still owed a clearer walkthrough than given so far).
