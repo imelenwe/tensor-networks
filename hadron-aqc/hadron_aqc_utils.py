@@ -1,0 +1,293 @@
+"""Shared functions for the hadron AQC-Tensor notebook (hadron-aqc-tebd.ipynb).
+
+Copied verbatim from:
+  - hadron-aqc/hadron-aqc-algorithm1.ipynb  (hadron circuit + measurement helpers)
+  - AQC/aqctensor-algorithm1.ipynb          (AQC building blocks + MPS machinery)
+Those notebooks are not modified; edits to the copies here stay local to this file.
+"""
+from typing import Optional
+
+import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import Operator
+
+
+# ---------------- hadron circuit (from hadron-aqc-algorithm1.ipynb) ----------------
+
+def pair_hamiltonian_circuit(rzparam: float) -> QuantumCircuit:
+    qc = QuantumCircuit(2)
+    qc.cx(1, 0)
+    qc.h(1)
+    qc.rz(-rzparam, 1)
+    qc.cx(0,1)
+    qc.rz(rzparam, 1)
+    qc.cx(0, 1)
+    qc.h(1)
+    qc.cx(1,0)
+    return qc
+
+
+def electric_hamiltonian_circuit(theta: float) -> QuantumCircuit:
+    qc = QuantumCircuit(2)
+    qc.x(0)
+    qc.rz(theta/2, 0)
+    qc.cx(0,1)
+    qc.rz(-theta/2, 1)
+    qc.cx(0,1)
+    qc.rz(theta/2, 1)
+    qc.x(0)
+    return qc
+
+
+def construct_circuit(
+n_sites,
+num_trotter_steps, 
+kinetic_strength,
+electric_field_strength,
+mass, 
+qubits_per_site=2,
+add_visual_barriers = False,
+add_measurements = False,
+prep_init_state=True,
+use_meson_not_vacuum=False,
+):
+    num_qubits = qubits_per_site * n_sites
+    qc = QuantumCircuit(num_qubits)
+    if num_trotter_steps <=0:
+        return qc
+    # vaccum state Step 1: At even sites we expect quarks. At odd sites we expect antiquarks. The vacuum is the starting state where neither is present yet. To say "quark not present" on an even site, we set it to (0,0). To say "antiquark not present" on an odd site, we set it to (1,1). That's the alternating pattern.
+    if prep_init_state:
+        i = 1 # represents site 1
+        while i < n_sites:
+            for j in range(qubits_per_site): #runs 2 times as qubits per site=2
+                qc.x(i + j*n_sites) # So it flips pairs (1,7), (3,9), (5,11) 
+            i+=2 # jump the pairs.
+        if use_meson_not_vacuum:
+            center = [num_qubits //2 -1, num_qubits // 2]
+            qc.x(center) ## flip center two qubits to inject one meson excitation -> Physical: we want to watch a single quark–antiquark pair born at one spot and see how it spreads over time. Placing it at the center gives it equal room to travel left or right — the evolution comes out symmetric, which makes the heatmap readable. Placing it near an edge would make it bump into the boundary almost immediately.
+    else:
+        # caller handles state just do swapping
+        i=1
+        while i < num_qubits-1:
+            qc.swap(i, i+1)
+            i = i + 4 # not this path is not used at all
+
+    # Trotterization
+    for step in range(num_trotter_steps):
+        if add_visual_barriers:
+            qc.barrier() # draws a visual divider in circuit diagrams, no physics
+
+        # 1. SWAP Layer 1- adjacent qubits at pos 1, 5, 9...
+        if step > 0:
+            i=1
+            while i < num_qubits-1:
+                qc.swap(i, i+1)
+                i = i + 2*qubits_per_site # step by 4    
+
+        # 2. pair layer 1 - runs EVERY step including step 0
+        j = 0
+        while j < num_qubits - 2:
+            qc.compose(pair_hamiltonian_circuit(kinetic_strength),[j, j+1], inplace=True)
+            j = j+2
+        if n_sites % 2 == 0:
+            qc.compose(pair_hamiltonian_circuit(kinetic_strength),[j, j+1], inplace=True)          
+        
+        # 3. SWAP layer 2 — crosses n_i and n_o halves together
+        i = 1
+        while i < num_qubits - 1:
+            qc.swap(i, i + 1)
+            i = i + qubits_per_site     # step by 2
+
+        # 4. Pair layer 2 — offset by 2, picks up pairs that layer 1 missed
+        j = 2
+        while j < num_qubits - 3:
+            qc.compose(pair_hamiltonian_circuit(kinetic_strength), [j, j + 1], inplace=True)
+            j = j + 2
+        if n_sites % 2 != 0:
+            qc.compose(pair_hamiltonian_circuit(kinetic_strength), [j, j + 1], inplace=True)
+
+        # 5. SWAP layer 3 — partial undo, restores layout for electric layer
+        i = 3
+        while i < num_qubits - 1:
+            qc.swap(i, i + 1)
+            i = i + 2 * qubits_per_site     # step by 4
+
+        # 6 Electric layer - rotates each site's 2 qubit about Z axis
+        if electric_field_strength!=0:
+            electric_circ = electric_hamiltonian_circuit(electric_field_strength)
+            for j in range(n_sites):
+                qc.compose(electric_circ, [2*j, 2*j+1], inplace=True) # place the gate on qubits (0,1), (2,3), (4,5), (6,7), (8,9), (10,11)
+
+        # 7. Mass term — alternating Z-rotations on every qubit (staggered fermion sign)
+        for q in range(num_qubits):
+            if q % 2 == 0:
+                qc.rz(-1 * mass, q)     # even qubits rotate by -m
+            else:
+                qc.rz(mass, q)          # odd qubits rotate by +m
+
+        # measurements
+    if add_measurements:
+        qc.measure_all()
+
+    return qc
+
+
+def get_probabilities(expectationval: float):
+    return round((1-expectationval)/2, 3)
+
+
+def get_physical_particle_count(expectation_val_data, n_sites):
+    all_counts_persite_perstep = []
+    for expectation_val in expectation_val_data:
+        probs = [get_probabilities(exp) for exp in expectation_val]
+        counts_per_site = []
+        for site in range(n_sites):
+            occupied_count = probs[2*site] + probs[2*site + 1]
+            if site % 2 == 0:
+                num_filled_persite = occupied_count          # even site: filled slot = quark present
+            else:
+                num_filled_persite = 2.0 - occupied_count   # odd site: filled slot = antiquark absent, flip
+            counts_per_site.append(num_filled_persite)
+        all_counts_persite_perstep.append(counts_per_site)
+    return all_counts_persite_perstep
+
+
+def calc_meson_signal(meson_counts, vacuum_counts, n_sites):
+    meson_signal_perstep = []
+    for step in range(len(meson_counts)):
+        signal_per_site = [abs(meson_counts[step][site]- vacuum_counts[step][site]) for site in range(n_sites)]
+        meson_signal_perstep.append(signal_per_site)
+    return meson_signal_perstep
+
+
+# ---------------- AQC building blocks + MPS machinery (from aqctensor-algorithm1.ipynb) ----------------
+
+def aqc_cnot_block(theta1, theta2, theta3, theta4, reverse=False):
+    qc = QuantumCircuit(2)
+    if reverse:
+        qc.cx(1, 0)
+    else:
+        qc.cx(0, 1)
+    qc.ry(theta1, 0)
+    qc.rz(theta2, 0)
+    qc.ry(theta3, 1)
+    qc.rx(theta4, 1)
+    return qc
+
+
+def aqc_triplet_block(thetas): # triplet block
+    qc = QuantumCircuit(2)
+    for block_index, reverse in enumerate([True, False, True]):
+        theta1, theta2, theta3, theta4 = thetas[4*block_index: 4*block_index + 4] # we need 4 thetas for each block
+        block = aqc_cnot_block(theta1, theta2, theta3, theta4, reverse=reverse).to_gate(label=f"block{block_index}")
+        qc.append(block, [0, 1])
+    return qc
+
+
+def aqc_init_layer(L, thetas): # green init layer
+    qc = QuantumCircuit(L)
+    for q in range(L):
+        theta1, theta2, theta3  = thetas[3*q: 3*q + 3] # we need 3 thetas for each qubit
+        qc.rz(theta1, q)
+        qc.ry(theta2, q)
+        qc.rz(theta3, q)
+    return qc
+
+
+def aqc_field_layer(L, thetas): # orange Rz
+    qc = QuantumCircuit(L)
+    for q in range(L):
+        qc.rz(thetas[q], q)
+    return qc
+
+
+def pack_thetas(thetas_init, thetas_field, thetas_triplet):
+    return np.concatenate([thetas_init, thetas_field, thetas_triplet])
+
+
+def statevector_to_mps(state, L):
+    tensors=[]
+    M = np.array(state, dtype=complex).reshape(2, -1)
+    left_bond = 1
+
+    for q in range(L-1):
+        U, S, Vt = np.linalg.svd(M, full_matrices=False)
+        new_bond = len(S)
+        tensors.append(U.reshape(left_bond, 2, new_bond))
+        M = (np.diag(S)@Vt).reshape(new_bond*2, -1)
+        left_bond = new_bond
+
+    tensors.append(M.reshape(left_bond, 2, 1))
+    return tensors
+
+
+def mps_to_statevector(tensors):
+    result = tensors[0]
+    for tensor in tensors[1:]:
+        result = np.tensordot(result, tensor, axes=([-1],[0]))
+    return result.reshape(-1)
+
+
+def mps_overlap(tensors_psi, tensors_phi):
+    E = np.ones((1,1), dtype=complex)
+    for A, B in zip(tensors_psi, tensors_phi):
+        Bc = np.conj(B)
+        E = np.tensordot(E, A, axes=([0], [0]))
+        E = np.tensordot(E, Bc, axes=([0,1], [0,1]))
+    return E[0,0]
+
+
+def apply_1q_gate_to_mps_tensor(inputtensor, gate):
+    return np.tensordot(gate, inputtensor, axes=([1],[1])).transpose(1, 0, 2)
+
+
+def apply_2q_gate_mps_tensor(inputtensor1, inputtensor2, gate, max_bond=None):
+    mergedtoonetensor = np.tensordot(inputtensor1, inputtensor2, axes=([2], [0]))
+    gate_tensor = gate.reshape(2,2,2,2) # 4 by 4 2 qubit matrix flattened. each axis has 2 states so it can represent the value of 00, 01, 10, 11 CNOT below is an e.g.
+    '''         col=0  col=1  col=2  col=3
+        row=0 [   1      0      0      0  ]
+        row=1 [   0      1      0      0  ]
+        row=2 [   0      0      0      1  ]
+        row=3 [   0      0      1      0  ]
+    '''
+    gateappliedtensor = np.tensordot(gate_tensor, mergedtoonetensor, axes =([2,3],[1,2]))
+    result = gateappliedtensor.transpose(2, 0, 1, 3)
+    l, _, _, r = result.shape
+    matrix = result.reshape(l*2, 2*r)
+    U, S, Vt = np.linalg.svd(matrix, full_matrices=False)
+
+    if max_bond is not None:
+        # KNOWN LIMITATION: this cut is only the best possible truncation if the rest of the chain
+        # is in canonical form (not maintained here), and S is not renormalized afterwards, so the
+        # state's norm leaks with every cut. Harmless for the L=50 XYZ run (chi=32 never actually
+        # truncated: norm^2 = 1.000000, fidelity unchanged at chi=64/128) -- must be fixed before any
+        # run where truncation really bites (see hadron-aqc/spec.md, Step 0).
+        k = min(max_bond, len(S)) # note S is a 1-D list of numbers at the point
+        U, S, Vt = U[:, :k], S[:k], Vt[:k, :]
+
+    new_bond = len(S)
+    new_tensor1 = U.reshape(l,2,new_bond)
+    new_tensor2 = (np.diag(S) @Vt).reshape(new_bond, 2, r)
+    return new_tensor1, new_tensor2
+
+
+def circuit_to_mps_tensors(start_tensors, circuit, max_bond=None):
+    start_tensors = list(start_tensors)
+    L = circuit.num_qubits
+    for instruction in circuit.data:
+        gate_matrix = Operator(instruction.operation).data
+        qubits = [circuit.find_bit(q).index for q in instruction.qubits] # instruction.qubits gives you Qubit objects, not plain numbers instruction.qubits = (Qubit(index=3), Qubit(index=2))
+        if len(qubits) == 1:
+            tensor_idx = L -1 -qubits[0]
+            start_tensors[tensor_idx] = apply_1q_gate_to_mps_tensor(start_tensors[tensor_idx], gate_matrix)
+        else:
+            qubitA, qubitB = qubits
+            tensor_idx_A = L -1 - qubitA
+            tensor_idx_B = L -1 - qubitB
+            if tensor_idx_B < tensor_idx_A:
+                lo, hi, gate_to_use = tensor_idx_B, tensor_idx_A, gate_matrix
+            else:
+                lo, hi = tensor_idx_A, tensor_idx_B
+                gate_to_use = gate_matrix.reshape(2,2,2,2).transpose(1,0,3,2).reshape(4,4)
+            start_tensors[lo], start_tensors[hi] = apply_2q_gate_mps_tensor(start_tensors[lo], start_tensors[hi], gate_to_use, max_bond=max_bond)
+    return start_tensors
