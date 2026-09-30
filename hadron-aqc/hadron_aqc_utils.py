@@ -4,6 +4,9 @@ Copied verbatim from:
   - hadron-aqc/hadron-aqc-algorithm1.ipynb  (hadron circuit + measurement helpers)
   - AQC/aqctensor-algorithm1.ipynb          (AQC building blocks + MPS machinery)
 Those notebooks are not modified; edits to the copies here stay local to this file.
+
+Local edits: pair/electric circuits are named ("pair", "electric"), and construct_circuit has
+keep_gates_as_blocks (default False = identical output to the original) so bricks can be read back.
 """
 from typing import Optional
 
@@ -15,7 +18,7 @@ from qiskit.quantum_info import Operator
 # ---------------- hadron circuit (from hadron-aqc-algorithm1.ipynb) ----------------
 
 def pair_hamiltonian_circuit(rzparam: float) -> QuantumCircuit:
-    qc = QuantumCircuit(2)
+    qc = QuantumCircuit(2, name="pair") # name lets build_hadron_brickwork find it when kept as one block
     qc.cx(1, 0)
     qc.h(1)
     qc.rz(-rzparam, 1)
@@ -28,7 +31,7 @@ def pair_hamiltonian_circuit(rzparam: float) -> QuantumCircuit:
 
 
 def electric_hamiltonian_circuit(theta: float) -> QuantumCircuit:
-    qc = QuantumCircuit(2)
+    qc = QuantumCircuit(2, name="electric") # name lets build_hadron_brickwork find it when kept as one block
     qc.x(0)
     qc.rz(theta/2, 0)
     qc.cx(0,1)
@@ -50,6 +53,7 @@ add_visual_barriers = False,
 add_measurements = False,
 prep_init_state=True,
 use_meson_not_vacuum=False,
+keep_gates_as_blocks=False, # True: pair/electric gates go in as one named block each (wrap=True), so their positions can be read back
 ):
     num_qubits = qubits_per_site * n_sites
     qc = QuantumCircuit(num_qubits)
@@ -87,10 +91,10 @@ use_meson_not_vacuum=False,
         # 2. pair layer 1 - runs EVERY step including step 0
         j = 0
         while j < num_qubits - 2:
-            qc.compose(pair_hamiltonian_circuit(kinetic_strength),[j, j+1], inplace=True)
+            qc.compose(pair_hamiltonian_circuit(kinetic_strength),[j, j+1], inplace=True, wrap=keep_gates_as_blocks)
             j = j+2
         if n_sites % 2 == 0:
-            qc.compose(pair_hamiltonian_circuit(kinetic_strength),[j, j+1], inplace=True)          
+            qc.compose(pair_hamiltonian_circuit(kinetic_strength),[j, j+1], inplace=True, wrap=keep_gates_as_blocks)          
         
         # 3. SWAP layer 2 — crosses n_i and n_o halves together
         i = 1
@@ -101,10 +105,10 @@ use_meson_not_vacuum=False,
         # 4. Pair layer 2 — offset by 2, picks up pairs that layer 1 missed
         j = 2
         while j < num_qubits - 3:
-            qc.compose(pair_hamiltonian_circuit(kinetic_strength), [j, j + 1], inplace=True)
+            qc.compose(pair_hamiltonian_circuit(kinetic_strength), [j, j + 1], inplace=True, wrap=keep_gates_as_blocks)
             j = j + 2
         if n_sites % 2 != 0:
-            qc.compose(pair_hamiltonian_circuit(kinetic_strength), [j, j + 1], inplace=True)
+            qc.compose(pair_hamiltonian_circuit(kinetic_strength), [j, j + 1], inplace=True, wrap=keep_gates_as_blocks)
 
         # 5. SWAP layer 3 — partial undo, restores layout for electric layer
         i = 3
@@ -116,7 +120,7 @@ use_meson_not_vacuum=False,
         if electric_field_strength!=0:
             electric_circ = electric_hamiltonian_circuit(electric_field_strength)
             for j in range(n_sites):
-                qc.compose(electric_circ, [2*j, 2*j+1], inplace=True) # place the gate on qubits (0,1), (2,3), (4,5), (6,7), (8,9), (10,11)
+                qc.compose(electric_circ, [2*j, 2*j+1], inplace=True, wrap=keep_gates_as_blocks) # place the gate on qubits (0,1), (2,3), (4,5), (6,7), (8,9), (10,11)
 
         # 7. Mass term — alternating Z-rotations on every qubit (staggered fermion sign)
         for q in range(num_qubits):
