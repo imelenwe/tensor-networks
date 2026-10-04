@@ -9,7 +9,7 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 ## Context
 
 - The question: implement AQC-Tensor on this circuit and see what happens with TEBD; later cross-check against a parallel implementation on the same circuit (reportedly better fidelity than "the original AQC" at small qubit counts).
-- Deprioritised: matching GitHub issue #227's quimb-reported `Q=59.9985`.
+- **Now the benchmark (2026-10-02):** quantum-advantage-tracker instance `su2_hadron_dynamics_lsh_x_100_meson` (+ `_SCV` = our vacuum) — see Phase 4.
 - **Parallel implementation's protocol (2026-09-29):** target = hadron circuit as quimb MPS (SVD cutoff 1e-12); start = shallower Trotter (4–5 steps for a 10-step target) + X layer; each 2q gate → KAK block, 1q gates → rotations, init reproduces shallow circuit exactly; IBM `qiskit-addon-aqc-tensor` `MaximizeStateFidelity` + L-BFGS-B; ansatz MPS capped at χ=128, final fidelity rechecked at 256/512; cost = transpile both circuits to CX on a linear chain (same settings), compare CX counts. Same method as ours; the library automates mapping + gives autodiff gradients. For 3.4: match their CX counting, also run `num_coarse_steps` = 4/5.
 
 ## Files
@@ -18,7 +18,8 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 |---|---|
 | `tutorials/IBM-loop-string-hadron-dynamics.ipynb` | the tutorial, raw reference copy |
 | `hadron-aqc/hadron-aqc-algorithm1.ipynb` | **done** — circuit + measurement pipeline rebuilt in our own names, plain-English physics, heatmaps. Verified identical to the tutorial (118 circuit cases + helpers, diff = 0). |
-| `hadron-aqc/hadron_aqc_utils.py` | copies of the hadron functions + Algorithm 1's AQC/MPS machinery, for the new notebook. Copies only — **never modify `AQC/aqctensor-algorithm1.ipynb`** (one user-approved exception, 2026-09-29: a single cell drawing the inside of one triplet block, inserted after the building-blocks cell; all other cells unchanged). `unpack_thetas` deliberately left out (tied to XYZ brick-wall layout). |
+| `hadron-aqc/hadron_aqc_utils.py` | copies of the hadron + Algorithm 1 functions, **plus the library route** (the AQC recipe written once, shared by every size section and the cluster script): `build_target_using_lib`, `check_target`, `build_cheap_trainable_circuit`, `train_to_target`, `count_cnots`, `count_and_verify`, `make_simulator_settings`, `mps_fidelity`, `tensors_to_library_target`. Never modify `AQC/aqctensor-algorithm1.ipynb`. |
+| `hadron-aqc/hadron-aqc-mapping.ipynb` | the trainable circuit built by hand (old OPTIONAL section: brickwork + `build_aqc_hadron_circuit`, 4 tables, annotated picture). Runs on its own; = library (147 CX at 2 steps). Place to try block changes. |
 | `hadron-aqc/hadron-aqc-tebd.ipynb` | **current work** — the AQC-Tensor notebook. Imports from the utils file. **Kernel: `qgss26`** (Py 3.12.13, Qiskit 2.5.0, numpy 2.5.1) — test there, not `qcml-ibmqc`. |
 
 ## Key facts
@@ -30,7 +31,7 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 - **Two-qubit gate positions per step:** 23 at step 0 (10 pair, 7 SWAP, 6 electric), 26 afterwards. Our hand-built AQC: 3 CX per position = 147 at k=2. Library (merges, O3 on a line): 129 at k=2, ~200 at k=3.
 - **Entanglement grows fast:** bond dimension 48 at 2 steps, 176 at 5, still growing after 10 (quimb needed ≈800 at scale). At 12 qubits max bond is 64, so `max_bond=64` = exact.
 - **Triplet block expressibility:** the triplet *alone* fits Pair (0.75) and Electric (0.05) to ~1e-11; SWAP = all-zero triplet. It can NOT absorb a preceding Rz⊗Rz before a Pair gate (miss ~1e-2) → the Rz before each brick is the home for carried mass turns (+ free knobs, no CNOTs).
-- **MPS truncation bug** (`apply_2q_gate_mps_tensor`): cuts without canonical form and never renormalises — norm leaks (12-qubit random circuit at χ=16: norm² 0.88, reported fidelity 0.78 vs true 0.89). Irrelevant while χ=64 at 12 qubits; must be fixed before any truncation study.
+- **MPS truncation bug** (`apply_2q_gate_mps_tensor`): cuts without canonical form and never renormalises — norm leaks (12-qubit random circuit at χ=16: norm² 0.88, reported fidelity 0.78 vs true 0.89). Not used from Phase 2 on — the library (quimb) does all cutting.
 - **IBM library route (scratch prototype 2026-09-30, isolated venv on top of qgss26 — adds packages only, numpy/qiskit unchanged):** `generate_ansatz_from_circuit(coarse, qubits_initially_zero=True)` does 1.3a+1.3b+1.4 in one call (same 147 CX at k=2, same before-training 0.5999/0.7152, untrained = coarse exactly); needs the *flat* circuit for quimb simulation (it can't simulate our named blocks). `MaximizeStateFidelity` + L-BFGS-B (`jac=True`, autodiff) trains in seconds. Our TEBD target = exact (fidelity 1.0). Results vs 10-step target (611 CX, O3 on a line):
 
   | k | Trotter fid vac/mes (CX) | AQC trained fid vac/mes (CX) | time |
@@ -46,35 +47,30 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 
 ## Plan
 
-**Route (decided 2026-09-30):** our own TEBD builds the target; IBM's `qiskit-addon-aqc-tensor` 0.3.1 (installed in `qgss26`, adds packages only; pre-install snapshot `.qgss26-before-aqc-library.txt`) builds the trainable circuit + starting angles and trains it against **our** target. Our hand-built mapping (1.3a/1.3b) stays in the notebook as an OPTIONAL "how it works" section; our own starting angles (old 1.4) and finite-difference training are dropped.
+**Route:** IBM's library (`qiskit-addon-aqc-tensor` + quimb) for training, and for the target from step 7 on. Our own TEBD only builds and checks the 12-qubit target. The hand-built mapping (old OPTIONAL section) now lives in `hadron-aqc-mapping.ipynb`. Work top-down.
 
-**Phase 0 — set up**
-- [x] 0.1 `hadron_aqc_utils.py` (copies + `keep_gates_as_blocks` option). 0.2 notebook created.
-- [x] 0.3 our MPS simulator = `Statevector` on the hadron circuit (max diff ~4e-15).
+**Notebook (`hadron-aqc-tebd.ipynb`): one section per size, steps restart at 1 in each; long runs and file writes behind switches at the top (`save_12_qubit_trained_angles`, `build_120_qubit_targets`, planned 32/80-qubit ones); "Run All" writes nothing and takes ~2 min.**
 
-**Phase 1 — 12 qubits, exact target**
-- [x] 1.1 Target via our TEBD: `vacuum_target_tensors`, `meson_target_tensors` (norm 1, = exact).
-- [x] 1.3a/1.3b OPTIONAL — brickwork (49 bricks) + our trainable circuit (147 CX); mapping tables + `brickwork_annotated.png`.
-- [x] 1.5a Install the library into `qgss26`; re-tested there.
-- [x] 1.5b Library imports + `tensors_to_library_target` → `vacuum_target_mps`, `meson_target_mps`. MPS-only check vs library's own TEBD (`cutoff=0.0`): 1.000000000000 both → our TEBD = IBM's TEBD.
-- [x] 1.5c Cheap circuit (`num_coarse_steps = 3`, strengths × 10/3) → `generate_ansatz_from_circuit(..., qubits_initially_zero=True)` → trainable circuit + starting angles. Before-training score 0.851366 / 0.899267 (699 angles). Copy check dropped (library guarantees ansatz(init) = circuit).
-- [x] 1.5d Train (`MaximizeStateFidelity` + L-BFGS-B, `jac=True`), vacuum + meson; save trained angles to disk. Result: 0.851→0.999967 (14 steps) / 0.899→0.999986 (25 steps), ~20 s; saved `trained_aqc_hadron_12q_k3.npz`.
-- [x] 1.5e CX count (O3, linear chain, seed 0): 10-step 611 → trained 201 / 202. Also vs plain Trotter (table in Key facts).
-- [ ] 1.6 *(OPTIONAL — presentation picture)* Heatmap `meson_signal`, t = 1..10 × {vacuum, meson}, trained vs target. Scratch-tested: k(t) = ceil(3t/10); fidelity ≥ 0.991 all t (weakest t=3), max signal diff 0.032; Z read from MPS via `local_expectation` (matches old statevector order).
-- [x] 1.7 Conclusions markdown cell at the end of `hadron-aqc-tebd.ipynb`.
+**12 qubits (6 sites, 10 Trotter steps):**
+- [x] 1. Check our MPS code — = statevector (diff ~4e-15).
+- [x] 2. Build the 12-qubit target — our TEBD, vacuum + meson, norm 1.
+- [x] 3. Hand the target to IBM's library — `tensors_to_library_target`; = library TEBD (1.000000000000).
+- [x] 4. Build the cheap trainable circuit — 3-step circuit (strengths × 10/3) → `generate_ansatz_from_circuit`; before training 0.851 / 0.899.
+- [x] 5. Train it — `MaximizeStateFidelity` + L-BFGS-B → **0.999967 / 0.999986**; `trained_aqc_hadron_12q_k3.npz`.
+- [x] 6. Count CNOTs and depth — O3, linear chain, seed 0, angles < 1e-6 snapped to 0 first: CNOTs 611 → 201 / 202; two-qubit depth 147 → 47 / 48; total depth 347 → 165 / 163. Transpiled circuit fidelity = 0.999967 / 0.999986 (unchanged; qubit order unchanged).
+- [x] 7. Target with a bond cap + health check — `build_target_using_lib` (gates on each qubit pair merged into one block, then quimb `CircuitMPS(max_bond, cutoff=0)`; ~2× fewer cuts, far less norm loss) and `check_target` (norm violation, chance each qubit reads 1, count of filled seats = `n_sites`).
+- [x] 8. Calibrate the convergence check — the change when `max_bond` doubles = error of the smaller one; count of filled seats alone is weak. Rule: no qubit changes by > 0.001 and norm violation < 0.01.
 
-**Phase 2 — what TEBD cutting does (the main open question)**
-- [ ] 2.1 Fix truncation in utils (canonical form before each cut, renormalise); verify norm = 1. Cross-check against quimb's truncated MPS.
-- [ ] 2.2 Targets at `max_bond` 8 / 16 / 32 vs exact: how much TEBD loses.
-- [ ] 2.3 Train against each cut target, score against the **exact** state.
+**120 qubits (60 sites, 20 Trotter steps):**
+- [x] 1. Build the targets — `targets_120qubits_merged/` (not in git), `max_bond` 256 / 512 / 1024, 6.5 h total (1024: 2.7 h each). At 1024: norm 0.985 / 0.988, change 512→1024 0.0054 / 0.0056 (≈ 0.0014 error est.), count = 60.
 
-**Phase 3 — scale (only if needed)**
-- [ ] 3.1 Particle count read straight from the MPS (mind `tensor_idx = L-1-q`, `[::-1]`).
-- [ ] 3.2 20–24 qubits, then 60 (`n_sites` even); t = 1..10 × {vacuum, meson}.
-- [ ] 3.3 Compare with the parallel implementation under one protocol (same library, CX counting, k = 4/5 too).
+**Next:**
+- [x] 10. Fidelity of the **transpiled** circuit at 12 qubits — done in step 6, holds — snap angles < 1e-6 to 0 before transpiling (Qiskit 2.5.x level-3 bug with near-zero angles, reported by the parallel implementation: fidelity fell to ~0.92 at 40/80 qubits).
+- [ ] 11. About 30 qubits (15 sites), 10 steps: target + training, 3- and 4-step starts (compression failed at ~30 qubits before). Train at bond 128, check at higher bond (bond 128 can mislead on hard states).
+- [ ] 12. 120-qubit training — needs a cluster; or share the 120-qubit targets + merging trick with the parallel implementation.
 
-**Choices made (revisit if needed):** start from all-|0⟩ (avoid `prep_init_state=False`, which adds SWAPs); structure-following ansatz, not plain brick wall; 10-step target only at first; vacuum and meson trained separately. Worth testing later: a particle-number-conserving ansatz variant (the Pair gate conserves number, the generic triplet doesn't) — may explain the parallel implementation's edge.
+**Parallel implementation (2026-10-04 report):** meson, 10 steps, up to 80 qubits at F > 0.999 (4–5-step starts; 80 qubits: 2180 CX / 2q depth 68 at F 0.999425; 21–31 h per run on a cluster). A tweak (one angle held at zero in ~60% of blocks) saves a further 12–14% CNOTs. Not yet: 20 steps at δt = 0.0015, or 120 qubits. Their 12-qubit counts are at optimisation level 1, so not directly comparable with ours (level 3).
 
-**Open questions:** is 12 qubits enough, or 20–24 / 60? Is the negligible mass-term effect expected? ("Original AQC" = IBM's `qiskit-addon-aqc-tensor` — answered by the parallel implementation's protocol.)
+**Choices (revisit if needed):** start from all-|0⟩ (X gates inside the circuit); vacuum and meson trained separately.
 
-**Parked:** why the SWAP layers cross between the string-in and string-out halves.
+**Open questions:** Is the negligible mass-term effect expected? How does training time grow with size on a laptop?

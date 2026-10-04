@@ -7,6 +7,9 @@ Those notebooks are not modified; edits to the copies here stay local to this fi
 
 Local edits: pair/electric circuits are named ("pair", "electric"), and construct_circuit has
 keep_gates_as_blocks (default False = identical output to the original) so bricks can be read back.
+
+The last section ("Library route") is new: the AQC recipe written once, using IBM's
+qiskit-addon-aqc-tensor + quimb, shared by every qubit-size section and the cluster script.
 """
 from typing import Optional
 
@@ -295,3 +298,113 @@ def circuit_to_mps_tensors(start_tensors, circuit, max_bond=None):
                 gate_to_use = gate_matrix.reshape(2,2,2,2).transpose(1,0,3,2).reshape(4,4)
             start_tensors[lo], start_tensors[hi] = apply_2q_gate_mps_tensor(start_tensors[lo], start_tensors[hi], gate_to_use, max_bond=max_bond)
     return start_tensors
+
+
+# ---------------- Library route: the AQC recipe, written once (IBM qiskit-addon-aqc-tensor + quimb) ----------------
+from functools import partial
+
+import quimb as qu
+import quimb.tensor as qtn
+from scipy.optimize import minimize
+from qiskit import transpile
+from qiskit.transpiler import CouplingMap, PassManager
+from qiskit.transpiler.passes import Collect2qBlocks, ConsolidateBlocks
+from qiskit_addon_aqc_tensor.ansatz_generation import generate_ansatz_from_circuit
+from qiskit_addon_aqc_tensor.simulation import tensornetwork_from_circuit, compute_overlap
+from qiskit_addon_aqc_tensor.simulation.quimb import QuimbSimulator
+from qiskit_addon_aqc_tensor.objective import MaximizeStateFidelity
+
+# tutorial strengths, used as defaults everywhere below
+KINETIC_STRENGTH = 0.15
+ELECTRIC_FIELD_STRENGTH = 0.01
+MASS = 0.03
+
+
+def make_simulator_settings(max_bond=None):
+    """quimb MPS simulator for the library. max_bond=None: no cap (quimb's default settings)."""
+    if max_bond is None:
+        return QuimbSimulator(qtn.CircuitMPS, autodiff_backend="jax")
+    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond), autodiff_backend="jax")
+
+
+def mps_fidelity(mps_a, mps_b):
+    return abs(compute_overlap(mps_a, mps_b)) ** 2
+
+
+def tensors_to_library_target(tensors):
+    """Repackage our own TEBD tensors (circuit_to_mps_tensors) as a quimb MPS the library can use."""
+    lib_arrays = [tensor.transpose(2, 0, 1) for tensor in reversed(tensors)]
+    lib_arrays[0] = lib_arrays[0][0]          # drop the dummy size-1 link at the start
+    lib_arrays[-1] = lib_arrays[-1][:, 0, :]  # and at the end
+    return qtn.CircuitMPS(psi0=qtn.MatrixProductState(lib_arrays, shape="lrp"))
+
+
+def build_target_using_lib(n_sites, num_trotter_steps, max_bond, use_meson_not_vacuum,
+                           kinetic_strength=KINETIC_STRENGTH, electric_field_strength=ELECTRIC_FIELD_STRENGTH, mass=MASS):
+    """Target MPS. Gates on the same qubit pair are merged into one block first (fewer cuts),
+    then quimb applies them, cutting each link to max_bond (None = no cap)."""
+    qc = construct_circuit(n_sites, num_trotter_steps, kinetic_strength, electric_field_strength, mass,
+                           use_meson_not_vacuum=use_meson_not_vacuum)
+    merged_qc = PassManager([Collect2qBlocks(), ConsolidateBlocks(force_consolidate=True)]).run(qc)
+    target_mps = qtn.CircuitMPS(qc.num_qubits, max_bond=max_bond, cutoff=0.0)
+    for instruction in merged_qc.data:
+        qubits = [merged_qc.find_bit(q).index for q in instruction.qubits]
+        target_mps.apply_gate_raw(Operator(instruction.operation).data, tuple(reversed(qubits)))  # quimb orders the two qubits the other way
+    return target_mps
+
+
+def check_target(target_mps):
+    """Health check: norm violation, chance each seat (qubit) is filled, count of filled seats (must equal n_sites)."""
+    norm = abs(compute_overlap(target_mps, target_mps))
+    z_val_per_seat = [target_mps.local_expectation(qu.pauli("Z"), (q,)).real / norm for q in range(target_mps.N)]
+    chance_of_filled_per_seat = [(1 - z) / 2 for z in z_val_per_seat]
+    count_of_filled_seats = sum(chance_of_filled_per_seat)
+    return 1 - norm, chance_of_filled_per_seat, count_of_filled_seats
+
+
+def build_cheap_trainable_circuit(n_sites, num_trotter_steps, num_coarse_steps, use_meson_not_vacuum,
+                                  kinetic_strength=KINETIC_STRENGTH, electric_field_strength=ELECTRIC_FIELD_STRENGTH, mass=MASS):
+    """Same circuit with fewer, bigger steps (strengths x num_trotter_steps/num_coarse_steps);
+    the library turns it into a trainable circuit whose starting angles copy it exactly."""
+    strength_scale = num_trotter_steps / num_coarse_steps
+    coarse_circuit = construct_circuit(n_sites, num_coarse_steps,
+                                       kinetic_strength * strength_scale,
+                                       electric_field_strength * strength_scale,
+                                       mass * strength_scale,
+                                       use_meson_not_vacuum=use_meson_not_vacuum)
+    return generate_ansatz_from_circuit(coarse_circuit, qubits_initially_zero=True)
+
+
+def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=2000):
+    """Turn the angles until the trainable circuit matches the target (L-BFGS-B, exact slopes via jax)."""
+    training_objective = MaximizeStateFidelity(target_mps, ansatz, simulator_settings)
+    return minimize(training_objective, starting_angles, method="L-BFGS-B", jac=True,
+                    options={"maxiter": maxiter, "ftol": 1e-14, "gtol": 1e-10})
+
+
+def count_cnots(circuit):
+    """CNOTs, two-qubit depth, total depth: transpiled to cx + one-qubit gates on a straight line, level 3, seed 0."""
+    linear_chain = CouplingMap.from_line(circuit.num_qubits)
+    transpiled = transpile(circuit, basis_gates=["cx", "rz", "sx", "x"], coupling_map=linear_chain,
+                           optimization_level=3, seed_transpiler=0)
+    cnots = transpiled.count_ops().get("cx", 0)
+    two_qubit_depth = transpiled.depth(lambda instruction: instruction.operation.num_qubits == 2)
+    total_depth = transpiled.depth()
+    return cnots, two_qubit_depth, total_depth, transpiled
+
+
+def snap_tiny_angles(angles, threshold=1e-6):
+    """Angles below threshold -> exactly 0 (avoids a Qiskit level-3 transpile bug with near-zero angles)."""
+    return np.where(np.abs(angles) < threshold, 0.0, angles)
+
+
+def count_and_verify(ansatz, trained_angles, target_mps, simulator_settings):
+    """Count the trained circuit after transpiling, and check the TRANSPILED circuit still matches the target."""
+    trained_circuit = ansatz.assign_parameters(snap_tiny_angles(trained_angles))
+    cnots, two_qubit_depth, total_depth, transpiled = count_cnots(trained_circuit)
+    qubit_order_unchanged = list(transpiled.layout.final_index_layout()) == list(range(transpiled.num_qubits))
+    transpiled_mps = tensornetwork_from_circuit(transpiled, simulator_settings)
+    return {"cnots": cnots, "two_qubit_depth": two_qubit_depth, "total_depth": total_depth,
+            "qubit_order_unchanged": qubit_order_unchanged,
+            "transpiled_fidelity": mps_fidelity(transpiled_mps, target_mps)}
+

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learn Index</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{ --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570; --border:#D3D9D7; --accent2:#2F7A72; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB; --border:#2B333D; --accent2:#7FC0B8; }
+  }
+  :root[data-theme="dark"]{ --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB; --border:#2B333D; --accent2:#7FC0B8; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 80px; line-height:1.6;}
+  .page{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:18px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0;}
+  h1{margin:0; font-size:30px;}
+  a.card{display:block; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; color:var(--ink); text-decoration:none;}
+  a.card:hover, a.card:focus-visible{border-color:var(--accent2);}
+  a.card h2{margin:0 0 4px; font-size:18px; color:var(--accent2);}
+  a.card p{margin:0; color:var(--muted); font-size:15px;}
+  .n{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Tensor networks · learn</p>
+  <h1>Learn Index</h1>
+  <p style="margin:0;color:var(--muted)">Worked, by-hand explainers. Open any page and use its contents box to jump around.</p>
+
+  <a class="card" href="mps-split-and-cut.html">
+    <span class="n">1</span>
+    <h2>Splitting and Cutting an MPS</h2>
+    <p>3-qubit W state: group by q0, build each qubit's tensor, see what links and importance numbers mean, then cut a link and measure the fidelity. Connects it all to SVD (U Σ Vᵀ).</p>
+  </a>
+
+  <a class="card" href="mps-overlap-trace.html">
+    <span class="n">2</span>
+    <h2>MPS Overlap Trace</h2>
+    <p>Axis-by-axis trace of how <code>mps_overlap</code> computes ⟨φ|ψ⟩: every <code>tensordot</code> call spelled out.</p>
+  </a>
+</div>
+</body>
+</html>

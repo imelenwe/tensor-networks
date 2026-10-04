@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splitting and Cutting an MPS</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570;
+    --border:#D3D9D7; --accent:#B5702A; --accent-soft:#F3E3CF;
+    --accent2:#2F7A72; --accent2-soft:#DCEEEB; --mono-bg:#F5F3EE; --drop:#B4472E; --drop-soft:#F5DDD6;
+    --shadow:0 1px 2px rgba(20,24,29,.06), 0 8px 24px rgba(20,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+      --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+      --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A; --drop:#E8835F; --drop-soft:#3A2620;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+    --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+    --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A; --drop:#E8835F; --drop-soft:#3A2620;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 90px; line-height:1.6;}
+  .page{max-width:820px; margin:0 auto; display:flex; flex-direction:column; gap:26px;}
+  a{color:var(--accent2);}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px;}
+  h1{font-size:clamp(26px,4vw,34px); margin:0 0 8px; font-weight:700; text-wrap:balance; line-height:1.2;}
+  .sub{color:var(--muted); font-size:15.5px; max-width:66ch; margin:0;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:14px; scroll-margin-top:16px;}
+  .panel h2{margin:0; font-size:21px; line-height:1.3;}
+  .panel h3{margin:6px 0 0; font-size:16px;}
+  .panel p, .panel li{font-size:15px; max-width:68ch; margin:0;}
+  .panel ul, .panel ol{margin:0; padding-left:22px; display:flex; flex-direction:column; gap:4px;}
+  .kicker{font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0;}
+  code{font-family:'IBM Plex Mono',monospace; font-size:.92em; background:var(--mono-bg); padding:1px 5px; border-radius:4px;}
+  pre{font-family:'IBM Plex Mono',monospace; font-size:14px; background:var(--mono-bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin:0; overflow-x:auto; line-height:1.55;}
+  .scroll{overflow-x:auto; max-width:100%;}
+  table.m{border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:14px; font-variant-numeric:tabular-nums;}
+  table.m th{font-weight:500; color:var(--muted); padding:6px 12px; text-align:center; white-space:nowrap;}
+  table.m th.r{text-align:right;}
+  table.m td{border:1px solid var(--border); padding:7px 14px; text-align:center; min-width:62px;}
+  table.m td.z{color:var(--muted);}
+  table.m td.note{border:0; text-align:left; color:var(--muted); font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; white-space:nowrap;}
+  table.m tr.drop td:not(.note){background:var(--drop-soft);}
+  table.m td.hit{background:var(--accent-soft); font-weight:600;}
+  table.t{border-collapse:collapse; font-size:14.5px;}
+  table.t th, table.t td{border:1px solid var(--border); padding:7px 12px; text-align:left;}
+  table.t th{background:var(--mono-bg); font-weight:600;}
+  .key{border-left:3px solid var(--accent2); background:var(--accent2-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:70ch;}
+  .warn{border-left:3px solid var(--accent); background:var(--accent-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:70ch;}
+  .row{display:flex; flex-wrap:wrap; gap:22px; align-items:flex-start;}
+  .toc ol{columns:2; column-gap:30px;}
+  @media (max-width:560px){ .toc ol{columns:1;} .panel{padding:18px 16px;} }
+  .back{font-size:14px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <p class="eyebrow">Learn · tensor networks</p>
+  <h1>Splitting and Cutting an MPS</h1>
+  <p class="sub">A worked example with 3 qubits. We turn the W state into a chain of small tensors (an MPS, short for matrix product state), see what the links between them hold, and then cut a link to save memory. Every number on this page can be checked by hand.</p>
+  <p class="back"><a href="index.html">← Back to the learn index</a></p>
+</header>
+
+<nav class="panel toc" aria-label="Contents">
+  <p class="kicker">Contents</p>
+  <ol>
+    <li><a href="#state">The state</a></li>
+    <li><a href="#step1">Step 1: group by q0</a></li>
+    <li><a href="#step2">Step 2: q0's tensor</a></li>
+    <li><a href="#step3">Step 3: q1's and q2's tensors</a></li>
+    <li><a href="#check">Check: walk the chain</a></li>
+    <li><a href="#step4">Step 4: cutting</a></li>
+    <li><a href="#svd">The same thing in SVD words</a></li>
+    <li><a href="#remember">Five things to remember</a></li>
+  </ol>
+</nav>
+
+<!-- ============ STATE ============ -->
+<section class="panel" id="state">
+  <p class="kicker">Start</p>
+  <h2>The state</h2>
+<pre>|ψ⟩ = (1/√3) · ( |001⟩ + |010⟩ + |100⟩ )</pre>
+  <p>Qubits are written <b>q0 q1 q2</b> from left to right. So <code>|001⟩</code> means q0 = 0, q1 = 0, q2 = 1.</p>
+  <ul>
+    <li>Exactly one qubit is 1 in every term.</li>
+    <li>Each term has amplitude 1/√3 ≈ <b>0.577</b>.</li>
+    <li>Square an amplitude to get a probability: 0.577² = 0.333, so each of the three outcomes happens 1/3 of the time.</li>
+  </ul>
+</section>
+
+<!-- ============ STEP 1 ============ -->
+<section class="panel" id="step1">
+  <p class="kicker">Step 1</p>
+  <h2>Group by q0</h2>
+  <p>It's just like a SQL <code>GROUP BY</code>. Write each ket as "q0's part ⊗ the rest", then collect the terms by q0's value:</p>
+<pre>|001⟩ = |0⟩ ⊗ |01⟩
+|010⟩ = |0⟩ ⊗ |10⟩
+|100⟩ = |1⟩ ⊗ |00⟩
+
+|ψ⟩ = (1/√3) · [ |0⟩ ⊗ ( |01⟩ + |10⟩ )   +   |1⟩ ⊗ |00⟩ ]
+                 └──── group A ─────────┘     └ group B ┘</pre>
+  <p>q0 has only two values, so there are two groups. Lay them out as a table: <b>rows are the groups (q0's value)</b>, and <b>columns are every value the remaining qubits q1 q2 can take</b>.</p>
+  <div class="scroll"><table class="m">
+    <tr><th></th><th>q1q2 = 00</th><th>01</th><th>10</th><th>11</th><th></th></tr>
+    <tr><th class="r">q0 = 0</th><td class="z">0</td><td>0.577</td><td>0.577</td><td class="z">0</td><td class="note">group A: |01⟩ + |10⟩</td></tr>
+    <tr><th class="r">q0 = 1</th><td>0.577</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="note">group B: |00⟩</td></tr>
+  </table></div>
+
+  <h3>Why q0 is linked to the others</h3>
+  <ul>
+    <li>If <b>q0 = 0</b>, then q1 q2 is <b>01 or 10</b>.</li>
+    <li>If <b>q0 = 1</b>, then q1 q2 is <b>00</b>.</li>
+  </ul>
+  <p>What q1 q2 can be depends on q0. The two rows are different, so q0 and the rest are tangled together. The <b>link</b> between q0 and q1 has to carry that information.</p>
+
+  <h3>Importance numbers</h3>
+  <p>For each row, add up the squares of its amplitudes:</p>
+<pre>group A (q0 = 0):  0.577² + 0.577² = 0.333 + 0.333 = 0.667
+group B (q0 = 1):  0.577²                         = 0.333
+                                           total  = 1.000</pre>
+  <p>In this example each importance number is the probability of its group. They add up to 1 because the state is always in exactly one group.</p>
+  <div class="key"><b>Two non-zero importance numbers → the link has bond size 2.</b> Bond size means the number of groups (or "roads") the link needs.</div>
+</section>
+
+<!-- ============ STEP 2 ============ -->
+<section class="panel" id="step2">
+  <p class="kicker">Step 2</p>
+  <h2>q0's tensor</h2>
+  <p>A <b>tensor</b> here is just a small table of numbers that belongs to one qubit. q0's tensor answers one question: <b>"if q0 has this value, which group does it go to: A, B, or a mix of both?"</b></p>
+  <div class="row">
+    <div class="scroll"><table class="m">
+      <tr><th></th><th>group A</th><th>group B</th></tr>
+      <tr><th class="r">q0 = 0</th><td>1</td><td class="z">0</td></tr>
+      <tr><th class="r">q0 = 1</th><td class="z">0</td><td>1</td></tr>
+    </table></div>
+  </div>
+  <p>The groups' contents go into a second table, <b>the rest</b>. It has the same numbers as Step 1, but its rows are now labelled by group instead of by q0:</p>
+  <div class="scroll"><table class="m">
+    <tr><th></th><th>q1q2 = 00</th><th>01</th><th>10</th><th>11</th></tr>
+    <tr><th class="r">group A</th><td class="z">0</td><td>0.577</td><td>0.577</td><td class="z">0</td></tr>
+    <tr><th class="r">group B</th><td>0.577</td><td class="z">0</td><td class="z">0</td><td class="z">0</td></tr>
+  </table></div>
+<pre>[ q0's tensor ] ──link (A or B)── [ the rest: q1 q2 together ]</pre>
+  <div class="warn">Here the numbers are clean 1s and 0s because the two rows in Step 1 used different columns. In messier states, q0 = 0 can go partly to A and partly to B, and the numbers are smaller than 1. That's what entanglement looks like inside a tensor. For q0, the first qubit, the tensor is 2 × (number of groups), so at most 2 × 2.</div>
+</section>
+
+<!-- ============ STEP 3 ============ -->
+<section class="panel" id="step3">
+  <p class="kicker">Step 3</p>
+  <h2>Split the rest: q1's and q2's tensors</h2>
+  <p>Do the same <code>GROUP BY</code> again, now on q1. Each row is (group, q1 value) and the columns are q2 only:</p>
+  <div class="scroll"><table class="m">
+    <tr><th></th><th>q2 = 0</th><th>q2 = 1</th><th></th></tr>
+    <tr><th class="r">A, q1 = 0</th><td class="z">0</td><td>0.577</td><td class="note">q2 is 1</td></tr>
+    <tr><th class="r">A, q1 = 1</th><td>0.577</td><td class="z">0</td><td class="note">q2 is 0</td></tr>
+    <tr><th class="r">B, q1 = 0</th><td>0.577</td><td class="z">0</td><td class="note">q2 is 0 (same as the row above)</td></tr>
+    <tr><th class="r">B, q1 = 1</th><td class="z">0</td><td class="z">0</td><td class="note">never happens</td></tr>
+  </table></div>
+  <p><b>New compared with Step 1:</b> there are 4 rows but only <b>2 different patterns</b>. Rows that look the same share one group:</p>
+  <ul>
+    <li><b>group C</b> = q2 is 1</li>
+    <li><b>group D</b> = q2 is 0</li>
+  </ul>
+  <p>So the q1–q2 link also has bond size 2. Spotting which rows share a pattern is the SVD's job in general. Here we can see it by eye.</p>
+<pre>importance numbers at the q1–q2 link
+group C (q2 = 1):  0.577²           = 0.333
+group D (q2 = 0):  0.577² + 0.577²  = 0.667
+                            total   = 1.000</pre>
+
+  <h3>q2's tensor: "which group did I arrive from, and what is q2?"</h3>
+  <div class="scroll"><table class="m">
+    <tr><th></th><th>q2 = 0</th><th>q2 = 1</th></tr>
+    <tr><th class="r">from C</th><td class="z">0</td><td>1</td></tr>
+    <tr><th class="r">from D</th><td>1</td><td class="z">0</td></tr>
+  </table></div>
+
+  <h3>q1's tensor: a crossroads</h3>
+  <p>q1 is in the middle, so it has a link on both sides. You arrive from the left on road A or road B. q1 picks a value, and that decides which road you leave on to the right: C or D.</p>
+  <p class="kicker">Reminder: A = "q1 q2 is 01 or 10", B = "q1 q2 is 00", C = "q2 is 1", D = "q2 is 0"</p>
+  <div class="scroll"><table class="t">
+    <tr><th>arrive from</th><th>q1 is</th><th>so q2 must be</th><th>leave on</th><th>number stored</th></tr>
+    <tr><td>A</td><td>0</td><td>1</td><td>C</td><td>0.577</td></tr>
+    <tr><td>A</td><td>1</td><td>0</td><td>D</td><td>0.577</td></tr>
+    <tr><td>B</td><td>0</td><td>0</td><td>D</td><td>0.577</td></tr>
+    <tr><td>B</td><td>1</td><td>not allowed</td><td>—</td><td>0</td></tr>
+  </table></div>
+  <p>The same four facts can be written as one small table per q1 value. This is the layout the computer uses, because it turns walking the chain into matrix multiplication:</p>
+  <div class="row">
+    <div class="scroll"><p class="kicker">when q1 = 0</p><table class="m">
+      <tr><th></th><th>C</th><th>D</th></tr>
+      <tr><th class="r">from A</th><td>0.577</td><td class="z">0</td></tr>
+      <tr><th class="r">from B</th><td class="z">0</td><td>0.577</td></tr>
+    </table></div>
+    <div class="scroll"><p class="kicker">when q1 = 1</p><table class="m">
+      <tr><th></th><th>C</th><th>D</th></tr>
+      <tr><th class="r">from A</th><td class="z">0</td><td>0.577</td></tr>
+      <tr><th class="r">from B</th><td class="z">0</td><td class="z">0</td></tr>
+    </table></div>
+  </div>
+<pre>[ q0 ] ──A/B── [ q1 ] ──C/D── [ q2 ]
+ 2×2       two 2×2 tables      2×2</pre>
+  <div class="key">Nobody keeps a middle tensor's numbers in their head. The picture to keep is: <b>a tensor sits between links and says which road to take next</b>. The computer does the bookkeeping.</div>
+</section>
+
+<!-- ============ CHECK ============ -->
+<section class="panel" id="check">
+  <p class="kicker">Check</p>
+  <h2>Walk the chain: every amplitude comes back</h2>
+  <p>Pick q0's road, go through q1's crossroads, then read q2:</p>
+<pre>|001⟩:  q0=0 → A  →  from A, q1=0 → C  (0.577)  →  from C, q2=1 → 1   =  0.577 ✓
+|010⟩:  q0=0 → A  →  from A, q1=1 → D  (0.577)  →  from D, q2=0 → 1   =  0.577 ✓
+|100⟩:  q0=1 → B  →  from B, q1=0 → D  (0.577)  →  from D, q2=0 → 1   =  0.577 ✓
+|110⟩:  q0=1 → B  →  from B, q1=1 → nothing                           =  0     ✓</pre>
+  <p>In this W state, every row picks exactly one road. In messier states a row can send you down <b>both</b> roads with different numbers. Then you follow both paths, multiply the numbers along each one, and add the results.</p>
+  <div class="key">Steps 1–3 were <b>splitting</b>. Nothing was lost: the three small tensors hold the whole state exactly.</div>
+</section>
+
+<!-- ============ STEP 4 ============ -->
+<section class="panel" id="step4">
+  <p class="kicker">Step 4</p>
+  <h2>Cutting: drop a road to save memory</h2>
+  <p><b>Cutting means deliberately throwing away a road at a link.</b> The state becomes smaller to store, but it's no longer exact.</p>
+  <h3>Why cut?</h3>
+  <ul>
+    <li>Every road at a link costs memory.</li>
+    <li>3 qubits: each link needs at most 2 roads.</li>
+    <li>12 qubits (our hadron circuit): the middle link can need up to <b>64</b>.</li>
+    <li>60 qubits: the middle link can need up to about <b>a billion</b>.</li>
+  </ul>
+  <p>So we set a cap: keep at most <b>k</b> roads per link, and keep the ones with the <b>biggest importance numbers</b>. In quimb this cap is <code>max_bond</code>.</p>
+
+  <h3>Cut the W state to 1 road at the q0–q1 link</h3>
+  <div class="scroll"><table class="m">
+    <tr><th></th><th>importance</th><th></th></tr>
+    <tr><th class="r">road A</th><td>0.667</td><td class="note">biggest, keep</td></tr>
+    <tr class="drop"><th class="r">road B</th><td>0.333</td><td class="note">drop</td></tr>
+  </table></div>
+  <div class="row">
+    <div class="scroll"><p class="kicker">q0's tensor before</p><table class="m">
+      <tr><th></th><th>A</th><th>B</th></tr>
+      <tr><th class="r">q0 = 0</th><td>1</td><td class="z">0</td></tr>
+      <tr><th class="r">q0 = 1</th><td class="z">0</td><td>1</td></tr>
+    </table></div>
+    <div class="scroll"><p class="kicker">q0's tensor after</p><table class="m">
+      <tr><th></th><th>A</th><th></th></tr>
+      <tr><th class="r">q0 = 0</th><td>1</td><td class="note"></td></tr>
+      <tr><th class="r">q0 = 1</th><td class="z">0</td><td class="note">leads nowhere now</td></tr>
+    </table></div>
+  </div>
+  <p>Road B was the only way to reach |100⟩, so that term disappears:</p>
+<pre>before:  (1/√3) · ( |001⟩ + |010⟩ + |100⟩ )      each amplitude 0.577
+after:   (1/√2) · ( |001⟩ + |010⟩ )              each amplitude 0.707</pre>
+  <p>The 0.577 becomes 0.707 so that the probabilities add up to 1 again. This rescaling is called re-normalising.</p>
+
+  <h3>How much did we lose? Fidelity</h3>
+  <p><b>Fidelity</b> scores how close the cut state is to the original: 1 means identical and 0 means completely different. For one cut at one link:</p>
+  <div class="key"><b>fidelity = the sum of the importance numbers you kept</b><br>Here we kept road A, so fidelity = <b>0.667</b>. We lost a third of the state.</div>
+  <ul>
+    <li><b>Dropping big importance numbers hurts.</b> The W state is a bad case.</li>
+    <li><b>Dropping tiny ones costs almost nothing.</b> Keep 16 roads out of 64 and drop 48 that add up to only 0.00001, and the fidelity is still 0.99999.</li>
+  </ul>
+  <div class="warn"><b>When does the cut happen?</b> TEBD builds the state one gate at a time, and quimb cuts <b>after every gate</b> whenever a link goes over the cap. Small losses add up over many gates, so the final fidelity can be lower than a single cut at the end would give.</div>
+</section>
+
+<!-- ============ SVD ============ -->
+<section class="panel" id="svd">
+  <p class="kicker">Connection</p>
+  <h2>The same thing in SVD words</h2>
+  <p>Splitting at a link is an SVD: <code>M = U Σ Vᵀ</code>. Σ is a diagonal matrix of singular values, sorted from biggest to smallest.</p>
+  <div class="scroll"><table class="t">
+    <tr><th>SVD words</th><th>words on this page</th></tr>
+    <tr><td>M = U Σ Vᵀ</td><td>splitting a table at a link</td></tr>
+    <tr><td>U</td><td>the left tensor (q0's tensor)</td></tr>
+    <tr><td>Vᵀ</td><td>the rest, one row per road</td></tr>
+    <tr><td>Σ (diagonal of singular values)</td><td>how strong each road is</td></tr>
+    <tr><td>number of non-zero singular values</td><td>bond size (number of roads)</td></tr>
+    <tr><td><b>singular value²</b></td><td><b>importance number</b></td></tr>
+    <tr><td>drop the tail of Σ, plus the matching column of U and row of Vᵀ</td><td>cutting: drop the weakest roads</td></tr>
+  </table></div>
+  <h3>Our W state at the q0–q1 link</h3>
+  <div class="row">
+    <div class="scroll"><p class="kicker">U</p><table class="m">
+      <tr><td>1</td><td class="z">0</td></tr>
+      <tr><td class="z">0</td><td>1</td></tr>
+    </table></div>
+    <div class="scroll"><p class="kicker">Σ</p><table class="m">
+      <tr><td>0.816</td><td class="z">0</td></tr>
+      <tr><td class="z">0</td><td>0.577</td></tr>
+    </table></div>
+    <div class="scroll"><p class="kicker">Vᵀ</p><table class="m">
+      <tr><th></th><th>00</th><th>01</th><th>10</th><th>11</th></tr>
+      <tr><th class="r">A</th><td class="z">0</td><td>0.707</td><td>0.707</td><td class="z">0</td></tr>
+      <tr><th class="r">B</th><td>1</td><td class="z">0</td><td class="z">0</td><td class="z">0</td></tr>
+    </table></div>
+  </div>
+<pre>singular values:   0.816      0.577
+squared:           0.667      0.333   ← the importance numbers from Step 1
+U × Σ × Vᵀ  =  the Step 1 table</pre>
+  <p>Cutting to 1 road = keep 0.816 and drop the 0.577 at the tail of Σ, together with U's second column and Vᵀ's second row. (In Step 2 the singular values were folded into "the rest" instead of being kept in a separate Σ. That's only a choice of where the numbers are stored.)</p>
+</section>
+
+<!-- ============ REMEMBER ============ -->
+<section class="panel" id="remember">
+  <p class="kicker">Summary</p>
+  <h2>Five things to remember</h2>
+  <ol>
+    <li><b>A link is an SVD at that point in the chain.</b> Its bond size is the number of non-zero singular values.</li>
+    <li><b>Importance number = singular value²</b>, and they add up to 1.</li>
+    <li><b>Cutting = dropping the tail of Σ</b> (the smallest singular values).</li>
+    <li><b>Fidelity after one cut = the sum of the importance numbers you kept.</b></li>
+    <li><b>TEBD cuts after every gate</b>, so small losses add up. This is the question for Phase 2 of the hadron work.</li>
+  </ol>
+  <p class="back"><a href="#top" onclick="window.scrollTo(0,0);return false;">↑ Back to top</a> · <a href="index.html">Learn index</a></p>
+</section>
+
+</div>
+</body>
+</html>
