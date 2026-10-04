@@ -314,17 +314,28 @@ from qiskit_addon_aqc_tensor.simulation import tensornetwork_from_circuit, compu
 from qiskit_addon_aqc_tensor.simulation.quimb import QuimbSimulator
 from qiskit_addon_aqc_tensor.objective import MaximizeStateFidelity
 
-# tutorial strengths, used as defaults everywhere below
-KINETIC_STRENGTH = 0.15
-ELECTRIC_FIELD_STRENGTH = 0.01
-MASS = 0.03
+# ---- Settings: every number below that affects results, in one place ----
+# physics: the tutorial's strengths, applied once per Trotter step
+KINETIC_STRENGTH = 0.15          # pair gates: how easily particles hop (and quark-antiquark pairs are created)
+ELECTRIC_FIELD_STRENGTH = 0.01   # electric gates: energy cost of the string between quark and antiquark
+MASS = 0.03                      # Rz turns at the end of each step: quark mass
+# simulation
+TARGET_SVD_CUTOFF = 0.0          # building targets: nothing is dropped except by max_bond
+TRAINING_SVD_CUTOFF = 1e-10      # simulating the trainable circuit: quimb's default, written out
+# training (scipy L-BFGS-B)
+TRAINING_MAX_STEPS = 2000
+TRAINING_FTOL = 1e-14            # stop when the fidelity stops improving by more than this
+TRAINING_GTOL = 1e-10            # stop when every slope is smaller than this
+# counting CNOTs and depth
+TRANSPILE_BASIS_GATES = ["cx", "rz", "sx", "x"]
+TRANSPILE_LEVEL = 3
+TRANSPILE_SEED = 0
+TINY_ANGLE_THRESHOLD = 1e-6      # angles below this are set to 0 before transpiling (Qiskit level-3 bug)
 
 
 def make_simulator_settings(max_bond=None):
-    """quimb MPS simulator for the library. max_bond=None: no cap (quimb's default settings)."""
-    if max_bond is None:
-        return QuimbSimulator(qtn.CircuitMPS, autodiff_backend="jax")
-    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond), autodiff_backend="jax")
+    """quimb MPS simulator for the library. max_bond=None: no cap."""
+    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond, cutoff=TRAINING_SVD_CUTOFF), autodiff_backend="jax")
 
 
 def mps_fidelity(mps_a, mps_b):
@@ -346,7 +357,7 @@ def build_target_using_lib(n_sites, num_trotter_steps, max_bond, use_meson_not_v
     qc = construct_circuit(n_sites, num_trotter_steps, kinetic_strength, electric_field_strength, mass,
                            use_meson_not_vacuum=use_meson_not_vacuum)
     merged_qc = PassManager([Collect2qBlocks(), ConsolidateBlocks(force_consolidate=True)]).run(qc)
-    target_mps = qtn.CircuitMPS(qc.num_qubits, max_bond=max_bond, cutoff=0.0)
+    target_mps = qtn.CircuitMPS(qc.num_qubits, max_bond=max_bond, cutoff=TARGET_SVD_CUTOFF)
     for instruction in merged_qc.data:
         qubits = [merged_qc.find_bit(q).index for q in instruction.qubits]
         target_mps.apply_gate_raw(Operator(instruction.operation).data, tuple(reversed(qubits)))  # quimb orders the two qubits the other way
@@ -375,25 +386,25 @@ def build_cheap_trainable_circuit(n_sites, num_trotter_steps, num_coarse_steps, 
     return generate_ansatz_from_circuit(coarse_circuit, qubits_initially_zero=True)
 
 
-def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=2000):
+def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=TRAINING_MAX_STEPS):
     """Turn the angles until the trainable circuit matches the target (L-BFGS-B, exact slopes via jax)."""
     training_objective = MaximizeStateFidelity(target_mps, ansatz, simulator_settings)
     return minimize(training_objective, starting_angles, method="L-BFGS-B", jac=True,
-                    options={"maxiter": maxiter, "ftol": 1e-14, "gtol": 1e-10})
+                    options={"maxiter": maxiter, "ftol": TRAINING_FTOL, "gtol": TRAINING_GTOL})
 
 
 def count_cnots(circuit):
-    """CNOTs, two-qubit depth, total depth: transpiled to cx + one-qubit gates on a straight line, level 3, seed 0."""
+    """CNOTs, two-qubit depth, total depth, after transpiling to a straight line of qubits (settings above)."""
     linear_chain = CouplingMap.from_line(circuit.num_qubits)
-    transpiled = transpile(circuit, basis_gates=["cx", "rz", "sx", "x"], coupling_map=linear_chain,
-                           optimization_level=3, seed_transpiler=0)
+    transpiled = transpile(circuit, basis_gates=TRANSPILE_BASIS_GATES, coupling_map=linear_chain,
+                           optimization_level=TRANSPILE_LEVEL, seed_transpiler=TRANSPILE_SEED)
     cnots = transpiled.count_ops().get("cx", 0)
     two_qubit_depth = transpiled.depth(lambda instruction: instruction.operation.num_qubits == 2)
     total_depth = transpiled.depth()
     return cnots, two_qubit_depth, total_depth, transpiled
 
 
-def snap_tiny_angles(angles, threshold=1e-6):
+def snap_tiny_angles(angles, threshold=TINY_ANGLE_THRESHOLD):
     """Angles below threshold -> exactly 0 (avoids a Qiskit level-3 transpile bug with near-zero angles)."""
     return np.where(np.abs(angles) < threshold, 0.0, angles)
 

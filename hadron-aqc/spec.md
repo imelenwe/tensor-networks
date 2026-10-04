@@ -61,6 +61,12 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 - [x] 7. Target with a bond cap + health check — `build_target_using_lib` (gates on each qubit pair merged into one block, then quimb `CircuitMPS(max_bond, cutoff=0)`; ~2× fewer cuts, far less norm loss) and `check_target` (norm violation, chance each qubit reads 1, count of filled seats = `n_sites`).
 - [x] 8. Calibrate the convergence check — the change when `max_bond` doubles = error of the smaller one; count of filled seats alone is weak. Rule: no qubit changes by > 0.001 and norm violation < 0.01.
 
+**32 qubits (16 sites, 10 Trotter steps; 30 not used: an odd number of sites gives wrong vacuum/meson starting states):**
+- [x] 1. Targets — converged by `max_bond` 128 (change 128→256 ≤ 0.0001); trained against 256.
+- [x] 2. Cheap trainable circuit — 3-step start, 2044 angles; before training 0.643 / 0.671.
+- [x] 3. Train — training at `max_bond` 128: 0.99901 / 0.99950, ~4 min each; `trained_aqc_hadron_32q_k3.npz`.
+- [x] 4. Count + verify — same circuit checked at 256 and 512: **0.99922 / 0.99951** (the 128 cap slightly under-reported vacuum). CNOTs 1796 → 611, two-qubit depth 147 → 48, total depth 347 → 175 / 174. Transpiled circuit keeps its fidelity. No failure at ~30 qubits.
+
 **120 qubits (60 sites, 20 Trotter steps):**
 - [x] 1. Build the targets — `targets_120qubits_merged/` (not in git), `max_bond` 256 / 512 / 1024, 6.5 h total (1024: 2.7 h each). At 1024: norm 0.985 / 0.988, change 512→1024 0.0054 / 0.0056 (≈ 0.0014 error est.), count = 60.
 
