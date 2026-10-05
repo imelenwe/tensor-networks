@@ -1,0 +1,173 @@
+"""Compress the hadron circuit with AQC-Tensor, both states (vacuum, meson) in one run.
+
+Run from the hadron-aqc folder, for example:
+    python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64
+
+Everything the run makes goes into one folder, named after its settings, for example
+results/12q_20steps_4cheap_target64_training64/:
+    summary.md   the results as a table (readable)
+    run.log      everything printed on screen, including warnings and errors
+    results.json the same numbers as summary.md, for programs
+    angles.npz   the trained angles (vacuum and meson)
+"""
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # so the utils file one folder up can be imported
+from hadron_aqc_utils import (build_target_using_lib, check_target, build_cheap_trainable_circuit,
+                              make_simulator_settings, train_to_target, mps_fidelity,
+                              tensornetwork_from_circuit, construct_circuit, count_cnots,
+                              count_and_verify, KINETIC_STRENGTH, ELECTRIC_FIELD_STRENGTH, MASS)
+
+parser = argparse.ArgumentParser(description="Compress the hadron circuit with AQC-Tensor")
+parser.add_argument("--sites", type=int, required=True)
+parser.add_argument("--steps", type=int, required=True)
+parser.add_argument("--coarse-steps", type=int, required=True)
+parser.add_argument("--target-bond", type=int, required=True)
+parser.add_argument("--training-bond", type=int, required=True)
+args = parser.parse_args()
+
+LOG_EVERY_TRAINING_STEPS = 10
+
+# one folder per run, named after its settings
+run_name = (f"{2 * args.sites}q_{args.steps}steps_{args.coarse_steps}cheap"
+            f"_target{args.target_bond}_training{args.training_bond}")
+hadron_aqc_folder = Path(__file__).resolve().parent.parent
+run_folder = hadron_aqc_folder / "results" / run_name
+run_folder.mkdir(parents=True, exist_ok=True)
+run_folder_to_show = run_folder.relative_to(hadron_aqc_folder)   # "results/...", never the full path with the user's home folder
+
+
+class ScreenAndFile:
+    """Sends everything printed (including warnings and errors) both to the screen and to run.log."""
+    def __init__(self, screen, file):
+        self.screen = screen
+        self.file = file
+    def write(self, text):
+        self.screen.write(text)
+        self.file.write(text)
+        self.file.flush()
+    def flush(self):
+        self.screen.flush()
+        self.file.flush()
+    def __getattr__(self, name):   # anything else a library asks for (e.g. isatty, encoding) is answered by the screen
+        return getattr(self.screen, name)
+
+log_file = open(run_folder / "run.log", "w")
+sys.stdout = ScreenAndFile(sys.stdout, log_file)
+sys.stderr = ScreenAndFile(sys.stderr, log_file)
+
+start_time = time.time()
+def log(message):
+    print(f"[{(time.time() - start_time) / 60:6.1f} min] {message}", flush=True)
+
+
+def write_summary(results):
+    """summary.md: the settings, then one table with a column per state."""
+    labels = [label for label in ["vacuum", "meson"] if label in results]
+    rows = [
+        ("target health: norm violation / count of filled seats",
+         lambda r: f"{r['norm_violation']:.4f} / {r['count_of_filled_seats']:.4f} (must be {args.sites})"),
+        ("angles", lambda r: f"{r['angles']}"),
+        ("fidelity before → after training", lambda r: f"{r['fidelity_before']:.4f} → **{r['fidelity_after']:.6f}**"),
+        ("training steps", lambda r: f"{r['training_steps']} ({r['stopped']})"),
+        ("CNOTs (original → trained)", lambda r: f"{r['original_cnots']} → **{r['cnots']}**"),
+        ("two-qubit depth", lambda r: f"{r['original_two_qubit_depth']} → **{r['two_qubit_depth']}**"),
+        ("total depth", lambda r: f"{r['original_total_depth']} → {r['total_depth']}"),
+        ("fidelity of the transpiled circuit", lambda r: f"{r['transpiled_fidelity']:.6f}"),
+        (f"recheck at max_bond={2 * args.training_bond}", lambda r: f"{r['fidelity_recheck']:.6f}"),
+        ("time", lambda r: f"{r['minutes']:.1f} min"),
+    ]
+    lines = [f"# {run_name}", "",
+             f"{2 * args.sites} qubits ({args.sites} sites), {args.steps} Trotter steps, {args.coarse_steps}-step cheap circuit, "
+             f"target max_bond={args.target_bond}, training max_bond={args.training_bond}. "
+             f"Started {results['started']}.", "",
+             "| | " + " | ".join(labels) + " |",
+             "|---|" + "---|" * len(labels)]
+    for row_name, show in rows:
+        lines.append(f"| {row_name} | " + " | ".join(show(results[label]) for label in labels) + " |")
+    (run_folder / "summary.md").write_text("\n".join(lines) + "\n")
+
+
+log(f"started {time.strftime('%Y-%m-%d %H:%M')}: {2 * args.sites} qubits ({args.sites} sites), {args.steps} Trotter steps, "
+    f"{args.coarse_steps}-step cheap circuit, target max_bond={args.target_bond}, training max_bond={args.training_bond}")
+log(f"saving to {run_folder_to_show}")
+
+results = {"settings": vars(args), "started": time.strftime('%Y-%m-%d %H:%M')}
+trained_angles = {}
+training_settings = make_simulator_settings(max_bond=args.training_bond)
+check_settings = make_simulator_settings(max_bond=2 * args.training_bond)
+
+for label in ["vacuum", "meson"]:
+    use_meson_not_vacuum = (label == "meson")
+    state_start_time = time.time()
+
+    # target
+    log(f"{label}: building target...")
+    target_mps = build_target_using_lib(args.sites, args.steps, args.target_bond, use_meson_not_vacuum)
+    norm_violation, _, count_of_filled_seats = check_target(target_mps)
+    norm_violation = round(float(norm_violation), 6) + 0.0   # a rounding leftover like -1e-13 becomes 0.0 (adding 0.0 also turns -0.0 into 0.0)
+    log(f"{label}: target built (max_bond={args.target_bond}), norm violation={norm_violation:.4f}, "
+        f"count of filled seats={count_of_filled_seats:.4f} (must be {args.sites})")
+
+    # cheap trainable circuit
+    ansatz, starting_angles = build_cheap_trainable_circuit(args.sites, args.steps, args.coarse_steps, use_meson_not_vacuum)
+    untrained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(starting_angles), training_settings)
+    fidelity_before = float(mps_fidelity(untrained_mps, target_mps))
+    log(f"{label}: cheap {args.coarse_steps}-step circuit, {len(starting_angles)} angles, fidelity before training={fidelity_before:.6f}")
+
+    # train
+    log(f"{label}: training... (a progress line every {LOG_EVERY_TRAINING_STEPS} training steps)")
+    steps_done = 0
+    def show_progress(fidelity):
+        global steps_done
+        steps_done += 1
+        if steps_done % LOG_EVERY_TRAINING_STEPS == 0:
+            log(f"{label}:   training step {steps_done}, fidelity={fidelity:.6f}")
+
+    result = train_to_target(ansatz, starting_angles, target_mps, training_settings, progress=show_progress)
+    trained_angles[label] = result.x
+    np.savez(run_folder / "angles.npz", **trained_angles)
+    trained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(result.x), training_settings)
+    fidelity_after = float(mps_fidelity(trained_mps, target_mps))
+    stopped = "converged" if result.success else f"did NOT converge: {result.message}"
+    log(f"{label}: trained, fidelity={fidelity_after:.6f} ({result.nit} training steps, training max_bond={args.training_bond}), "
+        f"{stopped}; angles saved to angles.npz")
+
+    # count CNOTs: original circuit vs trained circuit
+    log(f"{label}: counting CNOTs (transpiling both circuits) and checking the transpiled circuit...")
+    original_circuit = construct_circuit(args.sites, args.steps, KINETIC_STRENGTH, ELECTRIC_FIELD_STRENGTH, MASS,
+                                         use_meson_not_vacuum=use_meson_not_vacuum)
+    original_cnots, original_two_qubit_depth, original_total_depth, _ = count_cnots(original_circuit)
+    counts = count_and_verify(ansatz, result.x, target_mps, training_settings)
+    log(f"{label}: CNOTs {original_cnots} -> {counts['cnots']}, two-qubit depth {original_two_qubit_depth} -> {counts['two_qubit_depth']}, "
+        f"total depth {original_total_depth} -> {counts['total_depth']}, transpiled fidelity={float(counts['transpiled_fidelity']):.6f}")
+
+    # recheck: same trained circuit, simulated with double the bond
+    log(f"{label}: recheck at max_bond={2 * args.training_bond}...")
+    recheck_mps = tensornetwork_from_circuit(ansatz.assign_parameters(result.x), check_settings)
+    fidelity_recheck = float(mps_fidelity(recheck_mps, target_mps))
+    log(f"{label}: recheck at max_bond={2 * args.training_bond}: fidelity={fidelity_recheck:.6f}")
+
+    results[label] = {"norm_violation": norm_violation, "count_of_filled_seats": float(count_of_filled_seats),
+                      "angles": len(starting_angles), "fidelity_before": fidelity_before,
+                      "fidelity_after": fidelity_after, "fidelity_recheck": fidelity_recheck,
+                      "training_steps": int(result.nit), "stopped": stopped, "original_cnots": original_cnots,
+                      "original_two_qubit_depth": original_two_qubit_depth, "original_total_depth": original_total_depth,
+                      "cnots": counts["cnots"], "two_qubit_depth": counts["two_qubit_depth"], "total_depth": counts["total_depth"],
+                      "transpiled_fidelity": float(counts["transpiled_fidelity"]),
+                      "qubit_order_unchanged": counts["qubit_order_unchanged"],
+                      "minutes": (time.time() - state_start_time) / 60}
+
+    # save after each state, so a crash later doesn't lose this state's results
+    with open(run_folder / "results.json", "w") as results_file:
+        json.dump(results, results_file, indent=2)
+    write_summary(results)
+    log(f"{label}: saved results.json and summary.md")
+
+log(f"finished {time.strftime('%Y-%m-%d %H:%M')}; see {run_folder_to_show / 'summary.md'}")

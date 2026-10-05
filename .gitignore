@@ -219,6 +219,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Hadron AQC: large MPS target files and local env snapshot (never commit)
-hadron-aqc/targets_120qubits*/
-hadron-aqc/.qgss26-before-aqc-library.txt
+# Hadron AQC: large MPS target files (never commit)
+hadron-aqc/results/targets_120qubits*/
+
+# Editor settings (machine-specific paths)
+.vscode/
