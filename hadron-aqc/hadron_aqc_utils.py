@@ -388,12 +388,12 @@ def build_cheap_trainable_circuit(n_sites, num_trotter_steps, num_coarse_steps, 
 
 def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=TRAINING_MAX_STEPS, progress=None):
     """Turn the angles until the trainable circuit matches the target (L-BFGS-B, exact slopes via jax).
-    progress: optional function, called after every training step with the current fidelity."""
+    progress: optional function, called after every training step with the current fidelity and angles."""
     training_objective = MaximizeStateFidelity(target_mps, ansatz, simulator_settings)
 
-    def after_each_step(intermediate_result):   # scipy calls this after every step; .fun = 1 - fidelity
+    def after_each_step(intermediate_result):   # scipy calls this after every step; .fun = 1 - fidelity, .x = angles
         if progress is not None:
-            progress(1 - intermediate_result.fun)
+            progress(1 - intermediate_result.fun, intermediate_result.x)
 
     return minimize(training_objective, starting_angles, method="L-BFGS-B", jac=True, callback=after_each_step,
                     options={"maxiter": maxiter, "ftol": TRAINING_FTOL, "gtol": TRAINING_GTOL})

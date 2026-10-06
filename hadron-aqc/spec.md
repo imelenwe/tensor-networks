@@ -17,11 +17,11 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 | file | what it is |
 |---|---|
 | `tutorials/IBM-loop-string-hadron-dynamics.ipynb` | the tutorial, raw reference copy |
-| `hadron-aqc/hadron-aqc-algorithm1.ipynb` | **done** — circuit + measurement pipeline rebuilt in our own names, plain-English physics, heatmaps. Verified identical to the tutorial (118 circuit cases + helpers, diff = 0). |
+| `hadron-aqc/notebooks/hadron-aqc-algorithm1.ipynb` | **done** — circuit + measurement pipeline rebuilt in our own names, plain-English physics, heatmaps. Verified identical to the tutorial (118 circuit cases + helpers, diff = 0). |
 | `hadron-aqc/hadron_aqc_utils.py` | copies of the hadron + Algorithm 1 functions, **plus the library route** (the AQC recipe written once, shared by every size section and the cluster script): `build_target_using_lib`, `check_target`, `build_cheap_trainable_circuit`, `train_to_target`, `count_cnots`, `count_and_verify`, `make_simulator_settings`, `mps_fidelity`, `tensors_to_library_target`. Never modify `AQC/aqctensor-algorithm1.ipynb`. |
-| `hadron-aqc/hadron-aqc-mapping.ipynb` | the trainable circuit built by hand (old OPTIONAL section: brickwork + `build_aqc_hadron_circuit`, 4 tables, annotated picture). Runs on its own; = library (147 CX at 2 steps). Place to try block changes. |
-| `hadron-aqc/hadron-aqc-tebd.ipynb` | **current work** — the AQC-Tensor notebook. Imports from the utils file. **Kernel: `qgss26`** (Py 3.12.13, Qiskit 2.5.0, numpy 2.5.1) — test there, not `qcml-ibmqc`. |
-| `hadron-aqc/scripts/run_hadron_aqc.py` | one command per run, both states: `python scripts/run_hadron_aqc.py --sites --steps --coarse-steps --target-bond --training-bond`. Writes `results/<qubits>q_<steps>steps_<k>cheap_target<b>_training<b>/` with `summary.md` (table), `run.log`, `results.json`, `angles.npz`. Progress line every 10 training steps; rechecks at 2× training bond. |
+| `hadron-aqc/notebooks/hadron-aqc-mapping.ipynb` | the trainable circuit built by hand (old OPTIONAL section: brickwork + `build_aqc_hadron_circuit`, 4 tables, annotated picture). Runs on its own; = library (147 CX at 2 steps). Place to try block changes. |
+| `hadron-aqc/notebooks/hadron-aqc-tebd.ipynb` | **current work** — the AQC-Tensor notebook. Imports from the utils file. **Kernel: `qgss26`** (Py 3.12.13, Qiskit 2.5.0, numpy 2.5.1) — test there, not `qcml-ibmqc`. |
+| `hadron-aqc/scripts/run_hadron_aqc.py` | one command per run: `python scripts/run_hadron_aqc.py --sites --steps --coarse-steps --target-bond --training-bond --states [vacuum] [meson] [--resume]`. Writes `results/<qubits>q_<steps>steps_<k>cheap_target<b>_training<b>[_<state>]/` with `summary.md` (table), `run.log`, `results.json`, `angles.npz`. Progress line after every training step; angles saved after every step (`--resume` continues a stopped run); rechecks at 2× training bond. Handover docs: `scripts/README.md`, `scripts/requirements.txt` (partial clone: `git sparse-checkout set hadron-aqc/scripts`, ~1 MB). |
 | `hadron-aqc/results/` | trained angles, run folders; `targets_120qubits_merged/` (8.4 GB, not in git). |
 
 ## Key facts
@@ -71,7 +71,8 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 
 **20 Trotter steps (the benchmark's step count), via the script:**
 - [x] 12 qubits, 4-step start: **0.999906 / 0.999879**, CNOTs 1231 → 278, two-qubit depth 297 → 65, ~30 s. Compression holds at 20 steps; the saving grows with steps (3× at 10 steps, 4.4× at 20).
-- [ ] 32 qubits, 4-step start, target bond 512, training bond 256 (est. 1.5–4 h). Check target norm violation < 0.01 first.
+- [x] 32 qubits, 4-step start — too slow for the laptop: target bond 512 loses 3% of the state (norm violation 0.0295, too low); bond 1024 loses 0.15% (20 min). Training at bond 256: ~15 min per step (step 1: 23 min, 0.13 → 0.47; step 2: 16.5 min → 0.55), 100–200 steps expected → 25–50 h per state. Stopped; cluster job.
+- [ ] 32 and 120 qubits, 20 steps, on the cluster (script handed over).
 
 **120 qubits (60 sites, 20 Trotter steps):**
 - [x] 1. Build the targets — `results/targets_120qubits_merged/` (not in git), `max_bond` 256 / 512 / 1024, 6.5 h total (1024: 2.7 h each). At 1024: norm 0.985 / 0.988, change 512→1024 0.0054 / 0.0056 (≈ 0.0014 error est.), count = 60.

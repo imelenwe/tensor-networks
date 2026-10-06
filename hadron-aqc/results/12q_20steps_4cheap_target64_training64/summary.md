@@ -1,6 +1,6 @@
 # 12q_20steps_4cheap_target64_training64
 
-12 qubits (6 sites), 20 Trotter steps, 4-step cheap circuit, target max_bond=64, training max_bond=64. Started 2026-10-05 20:33.
+12 qubits (6 sites), 20 Trotter steps, 4-step cheap circuit, target max_bond=64, training max_bond=64. Started 2026-10-06 21:51.
 
 | | vacuum | meson |
 |---|---|---|
@@ -13,4 +13,4 @@
 | total depth | 697 → 224 | 697 → 242 |
 | fidelity of the transpiled circuit | 0.999906 | 0.999879 |
 | recheck at max_bond=128 | 0.999906 | 0.999879 |
-| time | 0.3 min | 0.2 min |
+| time | 0.2 min | 0.1 min |

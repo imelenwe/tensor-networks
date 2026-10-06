@@ -1,17 +1,22 @@
-"""Compress the hadron circuit with AQC-Tensor, both states (vacuum, meson) in one run.
+"""Compress the hadron circuit with AQC-Tensor, for the vacuum, the meson, or both (one after the other).
 
 Run from the hadron-aqc folder, for example:
-    python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64
+    python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states vacuum meson
 
 Everything the run makes goes into one folder, named after its settings, for example
-results/12q_20steps_4cheap_target64_training64/:
+results/12q_20steps_4cheap_target64_training64/ (a single state adds its name, e.g. ..._training64_meson/):
     summary.md   the results as a table (readable)
     run.log      everything printed on screen, including warnings and errors
     results.json the same numbers as summary.md, for programs
-    angles.npz   the trained angles (vacuum and meson)
+    angles.npz   the trained angles (one entry per state)
+    progress_<state>.npy  the latest angles during training, updated after every training step (deleted when that state finishes)
+
+If a run is stopped (e.g. a cluster time limit), run the same command again with --resume:
+states already finished are skipped, and training continues from progress_<state>.npy.
 """
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -30,13 +35,15 @@ parser.add_argument("--steps", type=int, required=True)
 parser.add_argument("--coarse-steps", type=int, required=True)
 parser.add_argument("--target-bond", type=int, required=True)
 parser.add_argument("--training-bond", type=int, required=True)
+parser.add_argument("--states", nargs="+", choices=["vacuum", "meson"], required=True)
+parser.add_argument("--resume", action="store_true", help="continue a stopped run from its saved progress")
 args = parser.parse_args()
-
-LOG_EVERY_TRAINING_STEPS = 10
 
 # one folder per run, named after its settings
 run_name = (f"{2 * args.sites}q_{args.steps}steps_{args.coarse_steps}cheap"
             f"_target{args.target_bond}_training{args.training_bond}")
+if len(args.states) == 1:
+    run_name += f"_{args.states[0]}"   # a single-state run gets its own folder, never mixed with a both-states run
 hadron_aqc_folder = Path(__file__).resolve().parent.parent
 run_folder = hadron_aqc_folder / "results" / run_name
 run_folder.mkdir(parents=True, exist_ok=True)
@@ -58,13 +65,26 @@ class ScreenAndFile:
     def __getattr__(self, name):   # anything else a library asks for (e.g. isatty, encoding) is answered by the screen
         return getattr(self.screen, name)
 
-log_file = open(run_folder / "run.log", "w")
+log_file = open(run_folder / "run.log", "a" if args.resume else "w")   # resume adds to the old log instead of wiping it
 sys.stdout = ScreenAndFile(sys.stdout, log_file)
 sys.stderr = ScreenAndFile(sys.stderr, log_file)
 
 start_time = time.time()
 def log(message):
     print(f"[{(time.time() - start_time) / 60:6.1f} min] {message}", flush=True)
+
+
+def how_long(seconds):
+    """Short times in seconds, long ones in minutes."""
+    return f"{seconds:.0f} s" if seconds < 90 else f"{seconds / 60:.1f} min"
+
+
+def save_angles(file_path, angles):
+    """Write to a temporary file first, then rename: if the run is killed mid-write, the old file stays intact."""
+    temporary_path = file_path.with_suffix(".tmp")
+    with open(temporary_path, "wb") as angles_file:
+        np.save(angles_file, angles)
+    os.replace(temporary_path, file_path)
 
 
 def write_summary(results):
@@ -100,10 +120,17 @@ log(f"saving to {run_folder_to_show}")
 
 results = {"settings": vars(args), "started": time.strftime('%Y-%m-%d %H:%M')}
 trained_angles = {}
+if args.resume and (run_folder / "results.json").exists():
+    results = json.loads((run_folder / "results.json").read_text())       # states already finished
+    trained_angles = dict(np.load(run_folder / "angles.npz"))
+    log(f"resuming: already finished: {[label for label in args.states if label in results] or 'none'}")
 training_settings = make_simulator_settings(max_bond=args.training_bond)
 check_settings = make_simulator_settings(max_bond=2 * args.training_bond)
 
-for label in ["vacuum", "meson"]:
+for label in args.states:
+    if label in results:
+        log(f"{label}: already finished, skipping")
+        continue
     use_meson_not_vacuum = (label == "meson")
     state_start_time = time.time()
 
@@ -120,19 +147,26 @@ for label in ["vacuum", "meson"]:
     untrained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(starting_angles), training_settings)
     fidelity_before = float(mps_fidelity(untrained_mps, target_mps))
     log(f"{label}: cheap {args.coarse_steps}-step circuit, {len(starting_angles)} angles, fidelity before training={fidelity_before:.6f}")
+    progress_file = run_folder / f"progress_{label}.npy"
+    if args.resume and progress_file.exists():
+        starting_angles = np.load(progress_file)   # "fidelity before training" above stays the cheap circuit's, for the table
+        log(f"{label}: resuming training from {progress_file.name}")
 
     # train
-    log(f"{label}: training... (a progress line every {LOG_EVERY_TRAINING_STEPS} training steps)")
+    log(f"{label}: training... (a progress line after every training step)")
     steps_done = 0
-    def show_progress(fidelity):
-        global steps_done
+    last_step_time = time.time()
+    def show_progress(fidelity, angles):
+        global steps_done, last_step_time
         steps_done += 1
-        if steps_done % LOG_EVERY_TRAINING_STEPS == 0:
-            log(f"{label}:   training step {steps_done}, fidelity={fidelity:.6f}")
+        save_angles(progress_file, angles)
+        log(f"{label}:   training step {steps_done}, fidelity={fidelity:.6f}, this step took {how_long(time.time() - last_step_time)}")
+        last_step_time = time.time()
 
     result = train_to_target(ansatz, starting_angles, target_mps, training_settings, progress=show_progress)
     trained_angles[label] = result.x
     np.savez(run_folder / "angles.npz", **trained_angles)
+    progress_file.unlink(missing_ok=True)   # training finished: its angles are now in angles.npz
     trained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(result.x), training_settings)
     fidelity_after = float(mps_fidelity(trained_mps, target_mps))
     stopped = "converged" if result.success else f"did NOT converge: {result.message}"

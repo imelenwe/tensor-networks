@@ -4,9 +4,14 @@
     "steps": 20,
     "coarse_steps": 4,
     "target_bond": 64,
-    "training_bond": 64
+    "training_bond": 64,
+    "states": [
+      "vacuum",
+      "meson"
+    ],
+    "resume": false
   },
-  "started": "2026-10-05 20:33",
+  "started": "2026-10-06 21:51",
   "vacuum": {
     "norm_violation": 0.0,
     "count_of_filled_seats": 6.0,
@@ -24,7 +29,7 @@
     "total_depth": 224,
     "transpiled_fidelity": 0.9999060958597122,
     "qubit_order_unchanged": true,
-    "minutes": 0.2843945980072021
+    "minutes": 0.17434959808985392
   },
   "meson": {
     "norm_violation": 0.0,
@@ -43,6 +48,6 @@
     "total_depth": 242,
     "transpiled_fidelity": 0.9998793191533931,
     "qubit_order_unchanged": true,
-    "minutes": 0.24612025022506714
+    "minutes": 0.14905060529708863
   }
 }
