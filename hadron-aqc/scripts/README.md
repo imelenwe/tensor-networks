@@ -26,14 +26,39 @@ This brings `hadron-aqc/scripts/` and the files directly in `hadron-aqc/` (inclu
 
 Check: `python scripts/run_hadron_aqc.py --help` lists the options.
 
-## Run
+## Commands to run (copy-paste, from the `hadron-aqc` folder)
 
-From the `hadron-aqc` folder:
+Run each state as its own job; they are independent. Ask for a whole node: training uses every core it gets.
+
+**1. Quick test (30 s, any machine).** Checks the setup. Expected: fidelity 0.999879, CNOTs 1231 → 278.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 \
-    --target-bond 1024 --training-bond 256 --states meson 2> stderr.log
+python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states meson
 ```
+
+**2. 32 qubits, 20 steps.** Target ~20 min, then ~15 min per training step, 100–200 steps: about 25–50 h per state. Memory 2–6 GB.
+
+```bash
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson 2>> stderr_32q_meson.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum 2>> stderr_32q_vacuum.log
+```
+
+**3. 120 qubits, 20 steps (the benchmark).** Not yet run by us. Expect: target ~3 h; each training step several times slower than at 32 qubits (days in total, so `--resume` across job limits will be needed); memory at least 32 GB (the bond-1024 target alone is ~3.4 GB). At bond 1024 the target loses ~1.5% (norm violation ~0.012–0.015, slightly above the 0.01 guide; known and accepted for this run).
+
+```bash
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson 2>> stderr_120q_meson.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum 2>> stderr_120q_vacuum.log
+```
+
+**If a job stops** (time limit, crash): rerun the exact same line with `--resume` added before `2>>`, e.g.
+
+```bash
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --resume 2>> stderr_32q_meson.log
+```
+
+**What to send back:** the whole `results/<run name>/` folder and the `stderr_*.log` file.
+
+## Options
 
 | option | meaning |
 |---|---|
@@ -47,8 +72,6 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 \
 
 Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric 0.01, mass 0.03 per Trotter step.
 
-Quick test (30 s): `python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states meson` should give fidelity 0.99988 and 1231 → 278 CNOTs.
-
 ## Output
 
 Everything goes to `results/<run name>/`, named after the settings, e.g. `results/32q_20steps_4cheap_target1024_training256_meson/`:
@@ -61,7 +84,7 @@ Everything goes to `results/<run name>/`, named after the settings, e.g. `result
 | `results.json` | the numbers in `summary.md`, for programs |
 | `progress_<state>.npy` | only during training: the latest angles, used by `--resume` |
 
-`run.log` does not capture messages printed by jax's compiler; `2> stderr.log` keeps those.
+`run.log` does not capture messages printed by jax's compiler; the `2>> stderr_*.log` in the commands above keeps those (`>>` adds to the file, so a resumed run doesn't wipe it).
 
 ## Is it working?
 
@@ -75,7 +98,7 @@ Measured on a laptop (M4 Pro, 14 cores, 24 GB): 12 qubits ~30 s in total. 32 qub
 
 | what you see | what to do |
 |---|---|
-| norm violation above 0.01 | raise `--target-bond` |
+| norm violation above 0.01 | raise `--target-bond` (except 120 qubits at 1024: ~0.012–0.015 is expected, see above) |
 | no new line for a long time | normal at the first training step (one-time setup); compare with the times above |
 | `Constant folding ... taking > 1s` | harmless, appears once when training starts |
 | job stopped (time limit, crash) | run the same command plus `--resume` |
