@@ -335,7 +335,7 @@ TINY_ANGLE_THRESHOLD = 1e-6      # angles below this are set to 0 before transpi
 
 def make_simulator_settings(max_bond=None):
     """quimb MPS simulator for the library. max_bond=None: no cap."""
-    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond, cutoff=TRAINING_SVD_CUTOFF), autodiff_backend="jax")
+    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond, cutoff=TRAINING_SVD_CUTOFF), autodiff_backend="explicit")   # IBM's own gradient: far less memory than jax (which records the whole simulation)
 
 
 def mps_fidelity(mps_a, mps_b):
@@ -387,7 +387,7 @@ def build_cheap_trainable_circuit(n_sites, num_trotter_steps, num_coarse_steps, 
 
 
 def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=TRAINING_MAX_STEPS, progress=None):
-    """Turn the angles until the trainable circuit matches the target (L-BFGS-B, exact slopes via jax).
+    """Turn the angles until the trainable circuit matches the target (L-BFGS-B, exact slopes from the library).
     progress: optional function, called after every training step with the current fidelity and angles."""
     training_objective = MaximizeStateFidelity(target_mps, ansatz, simulator_settings)
 

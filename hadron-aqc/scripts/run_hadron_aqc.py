@@ -10,13 +10,16 @@ results/12q_20steps_4cheap_target64_training64/ (a single state adds its name, e
     results.json the same numbers as summary.md, for programs
     angles.npz   the trained angles (one entry per state)
     progress_<state>.npy  the latest angles during training, updated after every training step (deleted when that state finishes)
+    target_<state>.pkl    the target, saved once built (reused by --resume instead of rebuilding it)
 
 If a run is stopped (e.g. a cluster time limit), run the same command again with --resume:
-states already finished are skipped, and training continues from progress_<state>.npy.
+states already finished are skipped, the saved target is loaded, and training continues from progress_<state>.npy.
+--max-hours stops each state's training after that many hours; the state is then finished normally (counts, table).
 """
 import argparse
 import json
 import os
+import pickle
 import sys
 import time
 from pathlib import Path
@@ -37,6 +40,7 @@ parser.add_argument("--target-bond", type=int, required=True)
 parser.add_argument("--training-bond", type=int, required=True)
 parser.add_argument("--states", nargs="+", choices=["vacuum", "meson"], required=True)
 parser.add_argument("--resume", action="store_true", help="continue a stopped run from its saved progress")
+parser.add_argument("--max-hours", type=float, default=None, help="stop each state's training after this many hours (default: no limit)")
 args = parser.parse_args()
 
 # one folder per run, named after its settings
@@ -84,6 +88,14 @@ def save_angles(file_path, angles):
     temporary_path = file_path.with_suffix(".tmp")
     with open(temporary_path, "wb") as angles_file:
         np.save(angles_file, angles)
+    os.replace(temporary_path, file_path)
+
+
+def save_target(file_path, target_mps):
+    """Same write-then-rename as save_angles, for the target."""
+    temporary_path = file_path.with_suffix(".tmp")
+    with open(temporary_path, "wb") as target_file:
+        pickle.dump(target_mps, target_file)
     os.replace(temporary_path, file_path)
 
 
@@ -135,11 +147,18 @@ for label in args.states:
     state_start_time = time.time()
 
     # target
-    log(f"{label}: building target...")
-    target_mps = build_target_using_lib(args.sites, args.steps, args.target_bond, use_meson_not_vacuum)
+    target_file = run_folder / f"target_{label}.pkl"
+    if args.resume and target_file.exists():
+        log(f"{label}: loading saved target from {target_file.name}...")
+        with open(target_file, "rb") as saved:
+            target_mps = pickle.load(saved)
+    else:
+        log(f"{label}: building target...")
+        target_mps = build_target_using_lib(args.sites, args.steps, args.target_bond, use_meson_not_vacuum)
+        save_target(target_file, target_mps)
     norm_violation, _, count_of_filled_seats = check_target(target_mps)
     norm_violation = round(float(norm_violation), 6) + 0.0   # a rounding leftover like -1e-13 becomes 0.0 (adding 0.0 also turns -0.0 into 0.0)
-    log(f"{label}: target built (max_bond={args.target_bond}), norm violation={norm_violation:.4f}, "
+    log(f"{label}: target ready (max_bond={args.target_bond}), norm violation={norm_violation:.4f}, "
         f"count of filled seats={count_of_filled_seats:.4f} (must be {args.sites})")
 
     # cheap trainable circuit
@@ -153,23 +172,30 @@ for label in args.states:
         log(f"{label}: resuming training from {progress_file.name}")
 
     # train
-    log(f"{label}: training... (a progress line after every training step)")
+    time_limit = "" if args.max_hours is None else f", stops after {args.max_hours} h"
+    log(f"{label}: training... (a progress line after every training step{time_limit})")
     steps_done = 0
-    last_step_time = time.time()
+    training_start_time = last_step_time = time.time()
+    hit_time_limit = False
     def show_progress(fidelity, angles):
-        global steps_done, last_step_time
+        global steps_done, last_step_time, hit_time_limit
         steps_done += 1
         save_angles(progress_file, angles)
         log(f"{label}:   training step {steps_done}, fidelity={fidelity:.6f}, this step took {how_long(time.time() - last_step_time)}")
         last_step_time = time.time()
+        if args.max_hours is not None and time.time() - training_start_time > args.max_hours * 3600:
+            hit_time_limit = True
+            raise StopIteration   # scipy's way to end training early; it returns the latest angles
 
     result = train_to_target(ansatz, starting_angles, target_mps, training_settings, progress=show_progress)
     trained_angles[label] = result.x
     np.savez(run_folder / "angles.npz", **trained_angles)
-    progress_file.unlink(missing_ok=True)   # training finished: its angles are now in angles.npz
     trained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(result.x), training_settings)
     fidelity_after = float(mps_fidelity(trained_mps, target_mps))
-    stopped = "converged" if result.success else f"did NOT converge: {result.message}"
+    if hit_time_limit:
+        stopped = f"stopped by --max-hours {args.max_hours}"
+    else:
+        stopped = "converged" if result.success else f"did NOT converge: {result.message}"
     log(f"{label}: trained, fidelity={fidelity_after:.6f} ({result.nit} training steps, training max_bond={args.training_bond}), "
         f"{stopped}; angles saved to angles.npz")
 
@@ -202,6 +228,7 @@ for label in args.states:
     with open(run_folder / "results.json", "w") as results_file:
         json.dump(results, results_file, indent=2)
     write_summary(results)
+    progress_file.unlink(missing_ok=True)   # only now: results.json holds this state, so --resume will skip it
     log(f"{label}: saved results.json and summary.md")
 
 log(f"finished {time.strftime('%Y-%m-%d %H:%M')}; see {run_folder_to_show / 'summary.md'}")

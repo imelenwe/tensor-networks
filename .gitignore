@@ -224,3 +224,7 @@ hadron-aqc/results/targets_120qubits*/
 
 # Editor settings (machine-specific paths)
 .vscode/
+
+# Hadron AQC: saved targets inside run folders (large) and half-written temporary files
+hadron-aqc/results/**/target_*.pkl
+hadron-aqc/results/**/*.tmp

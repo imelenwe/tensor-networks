@@ -2,9 +2,9 @@
 
 Compresses the SU(2) hadron (loop-string-hadron) Trotter circuit with AQC-Tensor. For each chosen state (vacuum, meson) it:
 
-1. builds the **target**: the full circuit as an MPS, cut to `--target-bond`, plus a health check;
+1. builds the **target**: the full circuit as an MPS, cut to `--target-bond`, plus a health check (saved, so `--resume` doesn't rebuild it);
 2. builds a **cheap circuit** (same circuit, fewer and bigger Trotter steps) that IBM's library turns into a trainable circuit;
-3. **trains** its angles to match the target (L-BFGS-B), simulating it at `--training-bond`;
+3. **trains** its angles to match the target (L-BFGS-B, IBM's explicit gradient, 64-bit), simulating it at `--training-bond`;
 4. **checks** the trained circuit after transpiling, and again at 2× the training bond;
 5. **counts** CNOTs and depth, original vs trained (level 3, linear chain).
 
@@ -28,35 +28,35 @@ Check: `python scripts/run_hadron_aqc.py --help` lists the options.
 
 ## Commands to run (copy-paste, from the `hadron-aqc` folder)
 
-Run each state as its own job; they are independent. Ask for a whole node: training uses every core it gets.
+Run each state as its own job; they are independent. **Resources per job: 1 core is enough** (training uses about one core), memory below.
 
-**1. Quick test (30 s, any machine).** Checks the setup. Expected: fidelity 0.999879, CNOTs 1231 → 278.
-
-```bash
-python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states meson
-```
-
-**2. 32 qubits, 20 steps.** Target ~20 min, then ~15 min per training step, 100–200 steps: about 25–50 h per state. Memory 2–6 GB.
+**1. Quick test (~2 min, any machine).** Checks the setup. Expected: fidelity above 0.9999, CNOTs 1231 → about 273, "stopped by --max-hours 0.03".
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson 2>> stderr_32q_meson.log
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum 2>> stderr_32q_vacuum.log
+python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states meson --max-hours 0.03
 ```
 
-**3. 120 qubits, 20 steps (the benchmark).** Not yet run by us. Expect: target ~3 h; each training step several times slower than at 32 qubits (days in total, so `--resume` across job limits will be needed); memory at least 32 GB (the bond-1024 target alone is ~3.4 GB). At bond 1024 the target loses ~1.5% (norm violation ~0.012–0.015, slightly above the 0.01 guide; known and accepted for this run).
+**2. 32 qubits, 20 steps.** Target ~20 min on a laptop (~80 min on 4 cluster cores); training ~3 min per step (the first steps up to ~9 min), 100–300 steps: about 5–15 h per state. Memory: 8 GB is plenty (measured peak 0.6 GB in training). Fits one 4-day job.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson 2>> stderr_120q_meson.log
-python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum 2>> stderr_120q_vacuum.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --max-hours 72 2>> stderr_32q_meson.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --max-hours 72 2>> stderr_32q_vacuum.log
 ```
 
-**If a job stops** (time limit, crash): rerun the exact same line with `--resume` added before `2>>`, e.g.
+**3. 120 qubits, 20 steps (the benchmark).** Not yet run by us. Expect: target several hours (2.7 h on a laptop); training steps ~4× longer than at 32 qubits, so days; memory 16 GB (the bond-1024 target alone is ~3.4 GB). At bond 1024 the target loses ~1.5% (norm violation ~0.012–0.015, slightly above the 0.01 guide; known and accepted for this run).
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --resume 2>> stderr_32q_meson.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --max-hours 72 2>> stderr_120q_meson.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --max-hours 72 2>> stderr_120q_vacuum.log
 ```
 
-**What to send back:** the whole `results/<run name>/` folder and the `stderr_*.log` file.
+`--max-hours 72` leaves room in a 4-day job for building the target and the final counting. If a job is killed anyway (time limit, crash, node failure), rerun the exact same line with `--resume` added before `2>>`, e.g.
+
+```bash
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --max-hours 72 --resume 2>> stderr_120q_meson.log
+```
+
+**What to send back:** the `results/<run name>/` folder (without the large `target_*.pkl`) and the `stderr_*.log` file.
 
 ## Options
 
@@ -68,7 +68,8 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target
 | `--target-bond` | max bond when building the target |
 | `--training-bond` | max bond when simulating the circuit during training (the main cost) |
 | `--states` | `vacuum`, `meson`, or `vacuum meson` (run one per job to work in parallel) |
-| `--resume` | continue a stopped run (see below) |
+| `--max-hours` | stop each state's training after this many hours, then finish it normally (counts, table). Needed: in 64-bit the training rarely stops by itself |
+| `--resume` | continue a killed run (see below) |
 
 Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric 0.01, mass 0.03 per Trotter step.
 
@@ -82,30 +83,28 @@ Everything goes to `results/<run name>/`, named after the settings, e.g. `result
 | `angles.npz` | **the main result**: trained angles, one entry per state |
 | `run.log` | every printed line with elapsed time; read this first when something looks wrong |
 | `results.json` | the numbers in `summary.md`, for programs |
+| `target_<state>.pkl` | the saved target (0.6 GB at 32 qubits, 3.4 GB at 120), loaded by `--resume` |
 | `progress_<state>.npy` | only during training: the latest angles, used by `--resume` |
 
-`run.log` does not capture messages printed by jax's compiler; the `2>> stderr_*.log` in the commands above keeps those (`>>` adds to the file, so a resumed run doesn't wipe it).
+The `2>> stderr_*.log` in the commands keeps any messages printed outside Python (`>>` adds to the file, so a resumed run doesn't wipe it).
 
 ## Is it working?
 
 - **Target line:** `norm violation` below 0.01 and `count of filled seats` equal to `--sites`.
 - **Training:** one `training step N` line per step, fidelity rising.
-- **End:** `converged`, and the recheck close to the trained fidelity.
-
-Measured on a laptop (M4 Pro, 14 cores, 24 GB): 12 qubits ~30 s in total. 32 qubits, 20 steps: target ~20 min at bond 1024 (bond 512 loses 3% of the state: too low); training at bond 256 ~15 min per step (the first step ~25 min), 100–200 steps expected, memory 2–6 GB.
+- **End:** `stopped by --max-hours` or `converged`, and the recheck close to the trained fidelity.
 
 ## When something goes wrong
 
 | what you see | what to do |
 |---|---|
 | norm violation above 0.01 | raise `--target-bond` (except 120 qubits at 1024: ~0.012–0.015 is expected, see above) |
-| no new line for a long time | normal at the first training step (one-time setup); compare with the times above |
-| `Constant folding ... taking > 1s` | harmless, appears once when training starts |
-| job stopped (time limit, crash) | run the same command plus `--resume` |
-| `did NOT converge` | the 2000-step limit was reached; `--resume` trains further |
+| the first training steps are slow | normal: they take up to ~3× longer than later ones |
+| job killed (time limit, crash) | run the same command plus `--resume` |
+| `did NOT converge` | the 2000-step limit was reached before `--max-hours`; the result is still saved and usable |
 | recheck much lower than the trained fidelity | raise `--training-bond` |
 
-**`--resume`:** finished states are skipped; training restarts from `progress_<state>.npy` (step numbers restart at 1); `run.log` is continued, not overwritten. Without `--resume`, the same command starts the folder fresh.
+**`--resume`:** finished states are skipped; the saved target is loaded; training continues from `progress_<state>.npy` (step numbers restart at 1); `run.log` is continued, not overwritten. A state stopped by `--max-hours` counts as finished. Without `--resume`, the same command starts the folder fresh.
 
 ## Using the trained angles
 
