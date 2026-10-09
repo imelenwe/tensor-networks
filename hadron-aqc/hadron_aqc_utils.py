@@ -333,9 +333,13 @@ TRANSPILE_SEED = 0
 TINY_ANGLE_THRESHOLD = 1e-6      # angles below this are set to 0 before transpiling (Qiskit level-3 bug)
 
 
-def make_simulator_settings(max_bond=None):
-    """quimb MPS simulator for the library. max_bond=None: no cap."""
-    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond, cutoff=TRAINING_SVD_CUTOFF), autodiff_backend="explicit")   # IBM's own gradient: far less memory than jax (which records the whole simulation)
+def make_simulator_settings(max_bond=None, gradient="jax"):
+    """quimb MPS simulator for the library. max_bond=None: no cap.
+    gradient (how training gets its slopes):
+      "jax":      the library trains on the exact circuit and IGNORES max_bond (best results, memory grows with circuit size)
+      "explicit": IBM's own gradient on the bond-limited MPS, so max_bond IS applied (little memory; blurred if max_bond is too small)
+    Simulations outside training (printed fidelities, rechecks) always use max_bond."""
+    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond, cutoff=TRAINING_SVD_CUTOFF), autodiff_backend=gradient)
 
 
 def mps_fidelity(mps_a, mps_b):

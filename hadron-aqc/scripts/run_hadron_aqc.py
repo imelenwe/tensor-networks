@@ -1,10 +1,10 @@
 """Compress the hadron circuit with AQC-Tensor, for the vacuum, the meson, or both (one after the other).
 
 Run from the hadron-aqc folder, for example:
-    python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states vacuum meson
+    python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states vacuum meson --gradient jax
 
 Everything the run makes goes into one folder, named after its settings, for example
-results/12q_20steps_4cheap_target64_training64/ (a single state adds its name, e.g. ..._training64_meson/):
+results/12q_20steps_4cheap_target64_training64_jax/ (a single state adds its name, e.g. ..._training64_jax_meson/):
     summary.md   the results as a table (readable)
     run.log      everything printed on screen, including warnings and errors
     results.json the same numbers as summary.md, for programs
@@ -39,13 +39,16 @@ parser.add_argument("--coarse-steps", type=int, required=True)
 parser.add_argument("--target-bond", type=int, required=True)
 parser.add_argument("--training-bond", type=int, required=True)
 parser.add_argument("--states", nargs="+", choices=["vacuum", "meson"], required=True)
+parser.add_argument("--gradient", choices=["jax", "explicit"], required=True,
+                    help="jax: trains on the exact circuit, ignores --training-bond, high memory; "
+                         "explicit: applies --training-bond during training, low memory")
 parser.add_argument("--resume", action="store_true", help="continue a stopped run from its saved progress")
 parser.add_argument("--max-hours", type=float, default=None, help="stop each state's training after this many hours (default: no limit)")
 args = parser.parse_args()
 
 # one folder per run, named after its settings
 run_name = (f"{2 * args.sites}q_{args.steps}steps_{args.coarse_steps}cheap"
-            f"_target{args.target_bond}_training{args.training_bond}")
+            f"_target{args.target_bond}_training{args.training_bond}_{args.gradient}")
 if len(args.states) == 1:
     run_name += f"_{args.states[0]}"   # a single-state run gets its own folder, never mixed with a both-states run
 hadron_aqc_folder = Path(__file__).resolve().parent.parent
@@ -117,7 +120,7 @@ def write_summary(results):
     ]
     lines = [f"# {run_name}", "",
              f"{2 * args.sites} qubits ({args.sites} sites), {args.steps} Trotter steps, {args.coarse_steps}-step cheap circuit, "
-             f"target max_bond={args.target_bond}, training max_bond={args.training_bond}. "
+             f"target max_bond={args.target_bond}, training max_bond={args.training_bond}, gradient={args.gradient}. "
              f"Started {results['started']}.", "",
              "| | " + " | ".join(labels) + " |",
              "|---|" + "---|" * len(labels)]
@@ -127,7 +130,9 @@ def write_summary(results):
 
 
 log(f"started {time.strftime('%Y-%m-%d %H:%M')}: {2 * args.sites} qubits ({args.sites} sites), {args.steps} Trotter steps, "
-    f"{args.coarse_steps}-step cheap circuit, target max_bond={args.target_bond}, training max_bond={args.training_bond}")
+    f"{args.coarse_steps}-step cheap circuit, target max_bond={args.target_bond}, training max_bond={args.training_bond}, gradient={args.gradient}")
+if args.gradient == "jax":
+    log(f"note: with gradient=jax the training uses the exact circuit; max_bond={args.training_bond} only applies to the printed fidelities")
 log(f"saving to {run_folder_to_show}")
 
 results = {"settings": vars(args), "started": time.strftime('%Y-%m-%d %H:%M')}
@@ -136,8 +141,8 @@ if args.resume and (run_folder / "results.json").exists():
     results = json.loads((run_folder / "results.json").read_text())       # states already finished
     trained_angles = dict(np.load(run_folder / "angles.npz"))
     log(f"resuming: already finished: {[label for label in args.states if label in results] or 'none'}")
-training_settings = make_simulator_settings(max_bond=args.training_bond)
-check_settings = make_simulator_settings(max_bond=2 * args.training_bond)
+training_settings = make_simulator_settings(max_bond=args.training_bond, gradient=args.gradient)
+check_settings = make_simulator_settings(max_bond=2 * args.training_bond, gradient=args.gradient)
 
 for label in args.states:
     if label in results:

@@ -4,7 +4,7 @@ Compresses the SU(2) hadron (loop-string-hadron) Trotter circuit with AQC-Tensor
 
 1. builds the **target**: the full circuit as an MPS, cut to `--target-bond`, plus a health check (saved, so `--resume` doesn't rebuild it);
 2. builds a **cheap circuit** (same circuit, fewer and bigger Trotter steps) that IBM's library turns into a trainable circuit;
-3. **trains** its angles to match the target (L-BFGS-B, IBM's explicit gradient, 64-bit), simulating it at `--training-bond`;
+3. **trains** its angles to match the target (L-BFGS-B; slopes from `--gradient jax` or `explicit`, see below);
 4. **checks** the trained circuit after transpiling, and again at 2× the training bond;
 5. **counts** CNOTs and depth, original vs trained (level 3, linear chain).
 
@@ -28,32 +28,32 @@ Check: `python scripts/run_hadron_aqc.py --help` lists the options.
 
 ## Commands to run (copy-paste, from the `hadron-aqc` folder)
 
-Run each state as its own job; they are independent. **Resources per job: 1 core is enough** (training uses about one core), memory below.
+Run each state as its own job; they are independent. Memory and time per job are given with each command.
 
-**1. Quick test (~2 min, any machine).** Checks the setup. Expected: fidelity above 0.9999, CNOTs 1231 → about 273, "stopped by --max-hours 0.03".
+**1. Quick test (~30 s, any machine).** Checks the setup. Expected: fidelity 0.99988 ("converged"), CNOTs 1231 → about 275.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states meson --max-hours 0.03
+python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states meson --gradient jax
 ```
 
-**2. 32 qubits, 20 steps.** Target ~20 min on a laptop (~80 min on 4 cluster cores); training ~3 min per step (the first steps up to ~9 min), 100–300 steps: about 5–15 h per state. Memory: 8 GB is plenty (measured peak 0.6 GB in training). Fits one 4-day job.
+**2. 32 qubits, 20 steps (jax, 32-bit).** Target ~20 min on a laptop (~80 min on 4 cluster cores); training ~10 min per step on 4 cores, ~50 steps to fidelity 0.99 (meson, measured on the cluster). Memory: peak ~50 GB, ask for 64 GB.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --max-hours 72 2>> stderr_32q_meson.log
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --max-hours 72 2>> stderr_32q_vacuum.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 2>> stderr_32q_meson.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --gradient jax --max-hours 72 2>> stderr_32q_vacuum.log
 ```
 
-**3. 120 qubits, 20 steps (the benchmark).** Not yet run by us. Expect: target several hours (2.7 h on a laptop); training steps ~4× longer than at 32 qubits, so days; memory 16 GB (the bond-1024 target alone is ~3.4 GB). At bond 1024 the target loses ~1.5% (norm violation ~0.012–0.015, slightly above the 0.01 guide; known and accepted for this run).
+**3. 120 qubits, 20 steps (the benchmark). Not settled yet.** With jax the memory is unknown (likely a few hundred GB; measure jax at 16 / 20 / 24 qubits first). With explicit the memory is small, but the training bond must be ~1024 to train correctly at 20 steps, which is very slow. Target: several hours (2.7 h on a laptop), ~3.4 GB; at bond 1024 it loses ~1.5% (norm violation ~0.012–0.015, known and accepted). The commands below are the jax version, for when memory allows.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --max-hours 72 2>> stderr_120q_meson.log
-python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --max-hours 72 2>> stderr_120q_vacuum.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 2>> stderr_120q_meson.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --gradient jax --max-hours 72 2>> stderr_120q_vacuum.log
 ```
 
 `--max-hours 72` leaves room in a 4-day job for building the target and the final counting. If a job is killed anyway (time limit, crash, node failure), rerun the exact same line with `--resume` added before `2>>`, e.g.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --max-hours 72 --resume 2>> stderr_120q_meson.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 --resume 2>> stderr_32q_meson.log
 ```
 
 **What to send back:** the `results/<run name>/` folder (without the large `target_*.pkl`) and the `stderr_*.log` file.
@@ -68,14 +68,26 @@ python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target
 | `--target-bond` | max bond when building the target |
 | `--training-bond` | max bond when simulating the circuit during training (the main cost) |
 | `--states` | `vacuum`, `meson`, or `vacuum meson` (run one per job to work in parallel) |
-| `--max-hours` | stop each state's training after this many hours, then finish it normally (counts, table). Needed: in 64-bit the training rarely stops by itself |
+| `--gradient` | `jax` or `explicit`: how training gets its slopes (see "Which gradient?") |
+| `--max-hours` | stop each state's training after this many hours, then finish it normally (counts, table). Needed with 64-bit numbers (explicit, or jax with `JAX_ENABLE_X64=True`): they rarely stop by themselves |
 | `--resume` | continue a killed run (see below) |
 
 Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric 0.01, mass 0.03 per Trotter step.
 
+## Which gradient?
+
+| | `jax` | `explicit` |
+|---|---|---|
+| what training simulates | the **exact** circuit: `--training-bond` is **ignored** during training | the circuit cut to `--training-bond` |
+| result | trains toward the true answer | correct only if `--training-bond` is large enough; too small and it trains a blurred circuit |
+| memory | grows with circuit size: ~1 GB at 12 qubits, ~50 GB at 32 (32-bit), ~91 GB (64-bit) | small: ~0.3 GB at 12 qubits, ~2 GB at 32 |
+| numbers | 32-bit by default (stops by itself); `JAX_ENABLE_X64=True` for 64-bit | always 64-bit |
+
+Measured at 32 qubits, 20 steps, meson, training bond 256, fidelity checked at bond 1024: jax **0.991**, explicit **0.949**. At 20 steps the state needs ~bond 1024, so explicit at 256 is too blurred. **Use jax unless memory doesn't allow it.** In both cases `--training-bond` still sets the bond of the printed fidelities, and the recheck uses 2× it.
+
 ## Output
 
-Everything goes to `results/<run name>/`, named after the settings, e.g. `results/32q_20steps_4cheap_target1024_training256_meson/`:
+Everything goes to `results/<run name>/`, named after the settings, e.g. `results/32q_20steps_4cheap_target1024_training256_jax_meson/`:
 
 | file | what it is |
 |---|---|
@@ -102,7 +114,7 @@ The `2>> stderr_*.log` in the commands keeps any messages printed outside Python
 | the first training steps are slow | normal: they take up to ~3× longer than later ones |
 | job killed (time limit, crash) | run the same command plus `--resume` |
 | `did NOT converge` | the 2000-step limit was reached before `--max-hours`; the result is still saved and usable |
-| recheck much lower than the trained fidelity | raise `--training-bond` |
+| recheck much higher or lower than the trained fidelity | the printed fidelity is blurred: raise `--training-bond` (and with explicit, the training itself was blurred) |
 
 **`--resume`:** finished states are skipped; the saved target is loaded; training continues from `progress_<state>.npy` (step numbers restart at 1); `run.log` is continued, not overwritten. A state stopped by `--max-hours` counts as finished. Without `--resume`, the same command starts the folder fresh.
 

@@ -21,7 +21,7 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 | `hadron-aqc/hadron_aqc_utils.py` | copies of the hadron + Algorithm 1 functions, **plus the library route** (the AQC recipe written once, shared by every size section and the cluster script): `build_target_using_lib`, `check_target`, `build_cheap_trainable_circuit`, `train_to_target`, `count_cnots`, `count_and_verify`, `make_simulator_settings`, `mps_fidelity`, `tensors_to_library_target`. Never modify `AQC/aqctensor-algorithm1.ipynb`. |
 | `hadron-aqc/notebooks/hadron-aqc-mapping.ipynb` | the trainable circuit built by hand (old OPTIONAL section: brickwork + `build_aqc_hadron_circuit`, 4 tables, annotated picture). Runs on its own; = library (147 CX at 2 steps). Place to try block changes. |
 | `hadron-aqc/notebooks/hadron-aqc-tebd.ipynb` | **current work** — the AQC-Tensor notebook. Imports from the utils file. **Kernel: `qgss26`** (Py 3.12.13, Qiskit 2.5.0, numpy 2.5.1) — test there, not `qcml-ibmqc`. |
-| `hadron-aqc/scripts/run_hadron_aqc.py` | one command per run: `python scripts/run_hadron_aqc.py --sites --steps --coarse-steps --target-bond --training-bond --states [vacuum] [meson] [--max-hours H] [--resume]`. Writes `results/<qubits>q_<steps>steps_<k>cheap_target<b>_training<b>[_<state>]/` with `summary.md` (table), `run.log`, `results.json`, `angles.npz`, `target_<state>.pkl` (not in git). Log line + saved angles after every training step; `--max-hours` ends training cleanly; `--resume` loads the saved target and continues a killed run; rechecks at 2× training bond. Handover docs: `scripts/README.md`, `scripts/requirements.txt` (partial clone: `git sparse-checkout set hadron-aqc/scripts`, ~1 MB). |
+| `hadron-aqc/scripts/run_hadron_aqc.py` | one command per run: `python scripts/run_hadron_aqc.py --sites --steps --coarse-steps --target-bond --training-bond --states [vacuum] [meson] --gradient jax|explicit [--max-hours H] [--resume]`. Writes `results/<qubits>q_<steps>steps_<k>cheap_target<b>_training<b>_<gradient>[_<state>]/` with `summary.md` (table), `run.log`, `results.json`, `angles.npz`, `target_<state>.pkl` (not in git). Log line + saved angles after every training step; `--max-hours` ends training cleanly; `--resume` loads the saved target and continues a killed run; rechecks at 2× training bond. Handover docs: `scripts/README.md` (incl. "Which gradient?"), `scripts/requirements.txt` (partial clone: `git sparse-checkout set hadron-aqc/scripts`, ~1 MB). |
 | `hadron-aqc/results/` | trained angles, run folders; `targets_120qubits_merged/` (8.4 GB, not in git). |
 
 ## Key facts
@@ -45,7 +45,7 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 
   Meson at k=2 gets stuck (local minimum) → **k=3 is the sweet spot** (~3× fewer CX than 611). Our own finite-difference training (vacuum k=2: 0.9994 in 24 min, stopped by `maxfun`) agrees with the library's 0.99965 → independent cross-check.
 - **Why a cheap Trotter circuit first (t=10 target, library, tested 2026-09-30):** k=1 (62 CX) trains only to 0.20 / 0.43 (vac/mes) — too few gate layers to build the entanglement; k=2 (129) 0.9996 / 0.967; k=3 (~200) 0.99997 / 0.99999. Same k=3 shape from **random** angles: 0.968 / 0.981. → the cheap circuit sets the gate budget AND gives the good starting point.
-- **Mass term** barely changes dynamics (m = 0 / 0.03 / 0.3 give near-identical output) — open question.
+- **Mass term** barely changes dynamics (m = 0 / 0.03 / 0.3 give near-identical output) — likely a sign-placement issue in the tutorial circuit (see 20-step list).
 
 ## Plan
 
@@ -66,15 +66,18 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 **32 qubits (16 sites, 10 Trotter steps; 30 not used: an odd number of sites gives wrong vacuum/meson starting states):**
 - [x] 1. Targets — converged by `max_bond` 128 (change 128→256 ≤ 0.0001); trained against 256.
 - [x] 2. Cheap trainable circuit — 3-step start, 2044 angles; before training 0.643 / 0.671.
-- [x] 3. Train — training at `max_bond` 128: 0.99901 / 0.99950, ~4 min each; `results/trained_aqc_hadron_32q_k3.npz`.
-- [x] 4. Count + verify — same circuit checked at 256 and 512: **0.99922 / 0.99951** (the 128 cap slightly under-reported vacuum). CNOTs 1796 → 611, two-qubit depth 147 → 48, total depth 347 → 175 / 174. Transpiled circuit keeps its fidelity. No failure at ~30 qubits.
+- [x] 3. Train — jax gradient, so training used the exact circuit (the 128 cap only applied to the printed fidelity): 0.99901 / 0.99950 as printed at bond 128, ~4 min each; `results/trained_aqc_hadron_32q_k3.npz`.
+- [x] 4. Count + verify — same circuit checked at 256 and 512: **0.99922 / 0.99951** (the bond-128 printout slightly under-reported vacuum). CNOTs 1796 → 611, two-qubit depth 147 → 48, total depth 347 → 175 / 174. Transpiled circuit keeps its fidelity. No failure at ~30 qubits.
 
 **20 Trotter steps (the benchmark's step count), via the script:**
 - [x] 12 qubits, 4-step start: **0.999906 / 0.999879**, CNOTs 1231 → 278, two-qubit depth 297 → 65, ~30 s. Compression holds at 20 steps; the saving grows with steps (3× at 10 steps, 4.4× at 20).
 - [x] 32 qubits, 4-step start — too slow for the laptop: target bond 512 loses 3% of the state (norm violation 0.0295, too low); bond 1024 loses 0.15% (20 min). Training at bond 256: ~15 min per step (step 1: 23 min, 0.13 → 0.47; step 2: 16.5 min → 0.55), 100–200 steps expected → 25–50 h per state. Stopped; cluster job.
 - [x] Cluster feedback (2026-10-07): jax gradient needs 50 GB (32-bit) / 91 GB (64-bit) at 32 qubits → out of memory. Switched `make_simulator_settings` to `autodiff_backend="explicit"` (IBM's own gradient): 32 qubits at training bond 256 → peak 0.64 GB, ~2.7 min per step (first steps up to 9 min), 1 core, 64-bit. 12 qubits: 0.29 GB vs 1.09 GB (jax), 1231 → 273 CNOTs, 0.99995 in 2 min. 64-bit training rarely stops by itself → `--max-hours`. Cluster's different numbers (norm violation 0.0000, before-training 0.231) = meson; our laptop run was vacuum.
-- [ ] 32 and 120 qubits, 20 steps, on the cluster (`--max-hours 72`).
-- [ ] Notebook: 12-qubit Step 5 now trains with the explicit gradient (64-bit, up to 2000 steps, ~1 h). Options: cap `maxiter`, or keep jax for the notebook. Not urgent.
+- [x] Gradient is a choice (2026-10-09): `make_simulator_settings(max_bond, gradient="jax")` (notebook default, reproduces 0.999967 / 0.999986, 201 / 202 CNOTs in seconds); script `--gradient jax|explicit` (required). **Library code: with jax the trainable circuit is an exact `qtn.Circuit`, so max_bond is ignored in training; explicit uses the bond-limited `CircuitMPS`.** Cluster, 32 qubits / 20 steps / meson / training bond 256, checked at bond 1024: jax 32-bit **0.991** (step 53, ~50 GB, ~10 min per step on 4 cores), jax 64-bit 0.983 (step 20, ~91 GB); explicit **0.949** (printed 0.82 at bond 256; ~2 GB), vacuum explicit 0.67. → at 20 steps training must see ~bond 1024; explicit at 256 trains a blurred circuit.
+- [ ] 32 qubits, 20 steps, jax 32-bit, meson + vacuum on the cluster (64 GB per job).
+- [ ] 120 qubits: measure jax memory at 16 / 20 / 24 qubits first; if it does not fit a 256 GB node, look for a cheaper sharp-training route (e.g. explicit at 256, then a few exact steps).
+- [ ] Per-site particle counts (the benchmark's observable) of the 0.949 and 0.991 circuits vs the target: is 0.95 already good enough?
+- [ ] Mass term (collaborator remark 2026-10-07): the tutorial's alternating sign lands on the two qubits of one site after the SWAPs, making the mass term a symmetry (explains "mass barely matters"); proposed fix `if (q // 2) % 2 == 0:` in `construct_circuit`. Decide at catch-up: benchmark circuit as is vs corrected option.
 
 **120 qubits (60 sites, 20 Trotter steps):**
 - [x] 1. Build the targets — `results/targets_120qubits_merged/` (not in git), `max_bond` 256 / 512 / 1024, 6.5 h total (1024: 2.7 h each). At 1024: norm 0.985 / 0.988, change 512→1024 0.0054 / 0.0056 (≈ 0.0014 error est.), count = 60.
@@ -88,4 +91,4 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 
 **Choices (revisit if needed):** start from all-|0⟩ (X gates inside the circuit); vacuum and meson trained separately.
 
-**Open questions:** Is the negligible mass-term effect expected? How does training time grow with size on a laptop?
+**Open questions:** Benchmark circuit vs corrected mass term? Can 120-qubit, 20-step training fit (jax memory) or be made cheap enough (explicit at high bond)?
