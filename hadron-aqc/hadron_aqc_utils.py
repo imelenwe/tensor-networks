@@ -317,10 +317,10 @@ from qiskit_addon_aqc_tensor.objective import MaximizeStateFidelity
 # ---- Settings: every number below that affects results, in one place ----
 # physics: the tutorial's strengths, applied once per Trotter step
 KINETIC_STRENGTH = 0.15          # pair gates: how easily particles hop (and quark-antiquark pairs are created)
-ELECTRIC_FIELD_STRENGTH = 0.01   # electric gates: energy cost of the string between quark and antiquark
+ELECTRIC_FIELD_STRENGTH = -0.01  # electric gates: energy cost of the string between quark and antiquark (sign as in the tracker's official circuit files; the tutorial code used +0.01)
 MASS = 0.03                      # Rz turns at the end of each step: quark mass
 # simulation
-TARGET_SVD_CUTOFF = 0.0          # building targets: nothing is dropped except by max_bond
+TARGET_SVD_CUTOFF = 1e-10        # building targets: quimb's default (drops near-zero numbers; 2x faster than 0, same accuracy)
 TRAINING_SVD_CUTOFF = 1e-10      # simulating the trainable circuit: quimb's default, written out
 # training (scipy L-BFGS-B)
 TRAINING_MAX_STEPS = 2000

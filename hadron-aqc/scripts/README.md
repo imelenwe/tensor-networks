@@ -72,7 +72,7 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target
 | `--max-hours` | stop each state's training after this many hours, then finish it normally (counts, table). Needed with 64-bit numbers (explicit, or jax with `JAX_ENABLE_X64=True`): they rarely stop by themselves |
 | `--resume` | continue a killed run (see below) |
 
-Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric 0.01, mass 0.03 per Trotter step.
+Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric −0.01, mass 0.03 per Trotter step. With these, the circuit is instruction-for-instruction the tracker's official `x_100_meson.qasm` / `x_100_SCV.qasm` (60 sites, 20 steps).
 
 ## Which gradient?
 
@@ -83,7 +83,7 @@ Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric 0.01, mass 
 | memory | grows with circuit size: ~1 GB at 12 qubits, ~50 GB at 32 (32-bit), ~91 GB (64-bit) | small: ~0.3 GB at 12 qubits, ~2 GB at 32 |
 | numbers | 32-bit by default (stops by itself); `JAX_ENABLE_X64=True` for 64-bit | always 64-bit |
 
-Measured at 32 qubits, 20 steps, meson, training bond 256, fidelity checked at bond 1024: jax **0.991**, explicit **0.949**. At 20 steps the state needs ~bond 1024, so explicit at 256 is too blurred. **Use jax unless memory doesn't allow it.** In both cases `--training-bond` still sets the bond of the printed fidelities, and the recheck uses 2× it.
+Measured at 32 qubits, 20 steps, meson, training bond 256, fidelity checked at bond 1024: jax **0.991**, explicit **0.949**. At 20 steps the state needs ~bond 1024, so explicit at 256 is too blurred. **Use jax unless memory doesn't allow it.** In both cases `--training-bond` still sets the bond of the printed fidelities, and the recheck uses 2× it. **With jax, trust the row "fidelity reached in training (exact, jax)" in `summary.md`:** the other fidelities are simulated at the training bond (and 2× it), which at 20 steps is too small to see the state (32 qubits, vacuum: 0.99 in training vs 0.19 at bond 256).
 
 ## Output
 

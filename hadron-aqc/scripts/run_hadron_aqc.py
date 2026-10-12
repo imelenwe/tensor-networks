@@ -109,12 +109,15 @@ def write_summary(results):
         ("target health: norm violation / count of filled seats",
          lambda r: f"{r['norm_violation']:.4f} / {r['count_of_filled_seats']:.4f} (must be {args.sites})"),
         ("angles", lambda r: f"{r['angles']}"),
-        ("fidelity before → after training", lambda r: f"{r['fidelity_before']:.4f} → **{r['fidelity_after']:.6f}**"),
+        (f"fidelity reached in training ({'exact, jax' if args.gradient == 'jax' else f'at max_bond={args.training_bond}'})",
+         lambda r: f"**{r['fidelity_in_training']:.6f}**"),
+        (f"fidelity before → after training, both simulated at max_bond={args.training_bond}",
+         lambda r: f"{r['fidelity_before']:.4f} → {r['fidelity_after']:.6f}"),
         ("training steps", lambda r: f"{r['training_steps']} ({r['stopped']})"),
         ("CNOTs (original → trained)", lambda r: f"{r['original_cnots']} → **{r['cnots']}**"),
         ("two-qubit depth", lambda r: f"{r['original_two_qubit_depth']} → **{r['two_qubit_depth']}**"),
         ("total depth", lambda r: f"{r['original_total_depth']} → {r['total_depth']}"),
-        ("fidelity of the transpiled circuit", lambda r: f"{r['transpiled_fidelity']:.6f}"),
+        (f"fidelity of the transpiled circuit (at max_bond={args.training_bond})", lambda r: f"{r['transpiled_fidelity']:.6f}"),
         (f"recheck at max_bond={2 * args.training_bond}", lambda r: f"{r['fidelity_recheck']:.6f}"),
         ("time", lambda r: f"{r['minutes']:.1f} min"),
     ]
@@ -182,9 +185,11 @@ for label in args.states:
     steps_done = 0
     training_start_time = last_step_time = time.time()
     hit_time_limit = False
+    training_fidelity = float("nan")   # the fidelity the training itself sees (exact with jax)
     def show_progress(fidelity, angles):
-        global steps_done, last_step_time, hit_time_limit
+        global steps_done, last_step_time, hit_time_limit, training_fidelity
         steps_done += 1
+        training_fidelity = float(fidelity)
         save_angles(progress_file, angles)
         log(f"{label}:   training step {steps_done}, fidelity={fidelity:.6f}, this step took {how_long(time.time() - last_step_time)}")
         last_step_time = time.time()
@@ -200,7 +205,9 @@ for label in args.states:
     if hit_time_limit:
         stopped = f"stopped by --max-hours {args.max_hours}"
     else:
-        stopped = "converged" if result.success else f"did NOT converge: {result.message}"
+        stopped = "converged" if result.success else f"did NOT converge: {result.message} (scipy status {result.status}, {result.nfev} evaluations)"
+    seen_by = "exact" if args.gradient == "jax" else f"at max_bond={args.training_bond}"
+    log(f"{label}: fidelity reached in training ({seen_by}) = {training_fidelity:.6f}")
     log(f"{label}: trained, fidelity={fidelity_after:.6f} ({result.nit} training steps, training max_bond={args.training_bond}), "
         f"{stopped}; angles saved to angles.npz")
 
@@ -221,6 +228,7 @@ for label in args.states:
 
     results[label] = {"norm_violation": norm_violation, "count_of_filled_seats": float(count_of_filled_seats),
                       "angles": len(starting_angles), "fidelity_before": fidelity_before,
+                      "fidelity_in_training": training_fidelity,
                       "fidelity_after": fidelity_after, "fidelity_recheck": fidelity_recheck,
                       "training_steps": int(result.nit), "stopped": stopped, "original_cnots": original_cnots,
                       "original_two_qubit_depth": original_two_qubit_depth, "original_total_depth": original_total_depth,
