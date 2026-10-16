@@ -28,7 +28,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # so the utils file one folder up can be imported
 from hadron_aqc_utils import (build_target_using_lib, check_target, build_cheap_trainable_circuit,
-                              make_simulator_settings, train_to_target, mps_fidelity,
+                              make_simulator_settings, make_contraction_planner, train_to_target, mps_fidelity,
                               tensornetwork_from_circuit, construct_circuit, count_cnots,
                               count_and_verify, KINETIC_STRENGTH, ELECTRIC_FIELD_STRENGTH, MASS)
 
@@ -44,6 +44,9 @@ parser.add_argument("--gradient", choices=["jax", "explicit"], required=True,
                          "explicit: applies --training-bond during training, low memory")
 parser.add_argument("--resume", action="store_true", help="continue a stopped run from its saved progress")
 parser.add_argument("--max-hours", type=float, default=None, help="stop each state's training after this many hours (default: no limit)")
+parser.add_argument("--planner-minutes", type=float, default=None,
+                    help="jax only: let cotengra plan the training contraction for this many minutes "
+                         "(much less memory and time; try 5, about 30 at 120 qubits). Default: off (quimb's greedy order)")
 args = parser.parse_args()
 
 # one folder per run, named after its settings
@@ -146,6 +149,12 @@ if args.resume and (run_folder / "results.json").exists():
     log(f"resuming: already finished: {[label for label in args.states if label in results] or 'none'}")
 training_settings = make_simulator_settings(max_bond=args.training_bond, gradient=args.gradient)
 check_settings = make_simulator_settings(max_bond=2 * args.training_bond, gradient=args.gradient)
+planner = None
+if args.planner_minutes is not None and args.gradient == "jax":   # explicit does many tiny contractions; a planner would only slow them
+    planner = make_contraction_planner(args.planner_minutes, cache_folder=str(run_folder / "contraction_plans"))
+    log(f"contraction order: cotengra planner (up to {args.planner_minutes:g} min of planning, plans saved in contraction_plans/)")
+elif args.planner_minutes is not None:
+    log("note: --planner-minutes is ignored with gradient=explicit")
 
 for label in args.states:
     if label in results:
@@ -197,7 +206,7 @@ for label in args.states:
             hit_time_limit = True
             raise StopIteration   # scipy's way to end training early; it returns the latest angles
 
-    result = train_to_target(ansatz, starting_angles, target_mps, training_settings, progress=show_progress)
+    result = train_to_target(ansatz, starting_angles, target_mps, training_settings, progress=show_progress, planner=planner)
     trained_angles[label] = result.x
     np.savez(run_folder / "angles.npz", **trained_angles)
     trained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(result.x), training_settings)

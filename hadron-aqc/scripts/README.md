@@ -36,24 +36,24 @@ Run each state as its own job; they are independent. Memory and time per job are
 python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states meson --gradient jax
 ```
 
-**2. 32 qubits, 20 steps (jax, 32-bit).** Target ~20 min on a laptop (~80 min on 4 cluster cores); training ~10 min per step on 4 cores, ~50 steps to fidelity 0.99 (meson, measured on the cluster). Memory: peak ~50 GB, ask for 64 GB.
+**2. 32 qubits, 20 steps (jax, 32-bit, cotengra planner).** Measured on a laptop (meson): target ~6 min, then ~19 s per training step, fidelity 0.991 after ~55 steps (~20 min), peak memory ~10 GB. Without `--planner-minutes` the same run needed ~50 GB and ~28 h on the cluster.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 2>> stderr_32q_meson.log
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --gradient jax --max-hours 72 2>> stderr_32q_vacuum.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 --planner-minutes 5 2>> stderr_32q_meson.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --gradient jax --max-hours 72 --planner-minutes 5 2>> stderr_32q_vacuum.log
 ```
 
-**3. 120 qubits, 20 steps (the benchmark). Not settled yet.** With jax the memory is unknown (likely a few hundred GB; measure jax at 16 / 20 / 24 qubits first). With explicit the memory is small, but the training bond must be ~1024 to train correctly at 20 steps, which is very slow. Target: several hours (2.7 h on a laptop), ~3.4 GB; at bond 1024 it loses ~1.5% (norm violation ~0.012–0.015, known and accepted). The commands below are the jax version, for when memory allows.
+**3. 120 qubits, 20 steps (the benchmark). Estimate, not yet run.** With the cotengra planner (measured at 24, 32, 40 qubits; extrapolated): peak memory ~50–55 GB (ask for 128 GB), planning ~30 min once, ~5 min per training step, ~10–12 h in total per state. Target: about 1 h; at bond 1024 it loses ~1.5% (norm violation ~0.012–0.015, known and accepted). Without the planner it does not fit any machine.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 2>> stderr_120q_meson.log
-python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --gradient jax --max-hours 72 2>> stderr_120q_vacuum.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 --planner-minutes 30 2>> stderr_120q_meson.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states vacuum --gradient jax --max-hours 72 --planner-minutes 30 2>> stderr_120q_vacuum.log
 ```
 
 `--max-hours 72` leaves room in a 4-day job for building the target and the final counting. If a job is killed anyway (time limit, crash, node failure), rerun the exact same line with `--resume` added before `2>>`, e.g.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 --resume 2>> stderr_32q_meson.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 256 --states meson --gradient jax --max-hours 72 --planner-minutes 5 --resume 2>> stderr_32q_meson.log
 ```
 
 **What to send back:** the `results/<run name>/` folder (without the large `target_*.pkl`) and the `stderr_*.log` file.
@@ -70,6 +70,7 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target
 | `--states` | `vacuum`, `meson`, or `vacuum meson` (run one per job to work in parallel) |
 | `--gradient` | `jax` or `explicit`: how training gets its slopes (see "Which gradient?") |
 | `--max-hours` | stop each state's training after this many hours, then finish it normally (counts, table). Needed with 64-bit numbers (explicit, or jax with `JAX_ENABLE_X64=True`): they rarely stop by themselves |
+| `--planner-minutes` | jax only: let cotengra plan the order of the big training contraction for this many minutes (5 up to ~40 qubits, ~30 at 120). Same results, far less memory and time; the plan is saved in `contraction_plans/` and reused by `--resume`. Default: off |
 | `--resume` | continue a killed run (see below) |
 
 Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric −0.01, mass 0.03 per Trotter step. With these, the circuit is instruction-for-instruction the tracker's official `x_100_meson.qasm` / `x_100_SCV.qasm` (60 sites, 20 steps).

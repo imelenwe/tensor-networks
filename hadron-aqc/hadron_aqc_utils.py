@@ -301,8 +301,10 @@ def circuit_to_mps_tensors(start_tensors, circuit, max_bond=None):
 
 
 # ---------------- Library route: the AQC recipe, written once (IBM qiskit-addon-aqc-tensor + quimb) ----------------
+import contextlib
 from functools import partial
 
+import cotengra as ctg
 import quimb as qu
 import quimb.tensor as qtn
 from scipy.optimize import minimize
@@ -331,6 +333,13 @@ TRANSPILE_BASIS_GATES = ["cx", "rz", "sx", "x"]
 TRANSPILE_LEVEL = 3
 TRANSPILE_SEED = 0
 TINY_ANGLE_THRESHOLD = 1e-6      # angles below this are set to 0 before transpiling (Qiskit level-3 bug)
+
+
+def make_contraction_planner(minutes=5, cache_folder=None):
+    """cotengra plans the order of the big training contraction (instead of quimb's default 'greedy').
+    Same answer, far less memory and time with jax. Plans are saved in cache_folder and reused."""
+    return ctg.ReusableHyperOptimizer(methods=["kahypar", "greedy"], minimize="size", max_repeats=10**6,
+                                      max_time=minutes * 60, parallel=True, directory=cache_folder, progbar=False)
 
 
 def make_simulator_settings(max_bond=None, gradient="jax"):
@@ -390,17 +399,20 @@ def build_cheap_trainable_circuit(n_sites, num_trotter_steps, num_coarse_steps, 
     return generate_ansatz_from_circuit(coarse_circuit, qubits_initially_zero=True)
 
 
-def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=TRAINING_MAX_STEPS, progress=None):
+def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=TRAINING_MAX_STEPS, progress=None, planner=None):
     """Turn the angles until the trainable circuit matches the target (L-BFGS-B, exact slopes from the library).
-    progress: optional function, called after every training step with the current fidelity and angles."""
+    progress: optional function, called after every training step with the current fidelity and angles.
+    planner: optional make_contraction_planner(); used only inside this training (jax), never for building targets."""
     training_objective = MaximizeStateFidelity(target_mps, ansatz, simulator_settings)
 
     def after_each_step(intermediate_result):   # scipy calls this after every step; .fun = 1 - fidelity, .x = angles
         if progress is not None:
             progress(1 - intermediate_result.fun, intermediate_result.x)
 
-    return minimize(training_objective, starting_angles, method="L-BFGS-B", jac=True, callback=after_each_step,
-                    options={"maxiter": maxiter, "ftol": TRAINING_FTOL, "gtol": TRAINING_GTOL})
+    contraction_order = qtn.contract_strategy(planner) if planner is not None else contextlib.nullcontext()
+    with contraction_order:   # the planner is active only inside this block; afterwards quimb is back to greedy
+        return minimize(training_objective, starting_angles, method="L-BFGS-B", jac=True, callback=after_each_step,
+                        options={"maxiter": maxiter, "ftol": TRAINING_FTOL, "gtol": TRAINING_GTOL})
 
 
 def count_cnots(circuit):

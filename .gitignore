@@ -227,4 +227,5 @@ hadron-aqc/results/targets_120qubits*/
 
 # Hadron AQC: saved targets inside run folders (large) and half-written temporary files
 hadron-aqc/results/**/target_*.pkl
+hadron-aqc/results/**/contraction_plans/
 hadron-aqc/results/**/*.tmp
