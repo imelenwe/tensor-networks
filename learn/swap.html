@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The SWAP</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570;
+    --border:#D3D9D7; --accent:#B5702A; --accent-soft:#F3E3CF;
+    --accent2:#2F7A72; --accent2-soft:#DCEEEB; --mono-bg:#F5F3EE;
+    --shadow:0 1px 2px rgba(20,24,29,.06), 0 8px 24px rgba(20,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+      --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+      --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+    --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+    --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 90px; line-height:1.6;}
+  .page{max-width:820px; margin:0 auto; display:flex; flex-direction:column; gap:24px;}
+  a{color:var(--accent2);}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px;}
+  h1{font-size:clamp(26px,4vw,34px); margin:0 0 8px; font-weight:700; line-height:1.2;}
+  .sub{color:var(--muted); font-size:15.5px; max-width:68ch; margin:0;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;}
+  .panel h2{margin:0; font-size:20px;}
+  .panel p, .panel li{font-size:15px; max-width:70ch; margin:0;}
+  .panel ul, .panel ol{margin:0; padding-left:22px; display:flex; flex-direction:column; gap:6px;}
+  code, .m{font-family:'IBM Plex Mono',monospace; font-size:.93em;}
+  code{background:var(--mono-bg); padding:1px 5px; border-radius:4px;}
+  pre{font-family:'IBM Plex Mono',monospace; font-size:14.5px; background:var(--mono-bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin:0; overflow-x:auto; line-height:1.6;}
+  .fig{background:#FFFFFF; border:1px solid var(--border); border-radius:10px; padding:10px; overflow-x:auto;}
+  .fig img{display:block; max-width:100%; height:auto;}
+  .cap{font-size:13.5px; color:var(--muted);}
+  .scroll{overflow-x:auto; max-width:100%;}
+  table.t{border-collapse:collapse; font-size:14.5px;}
+  table.t th, table.t td{border:1px solid var(--border); padding:7px 11px; text-align:left; vertical-align:top;}
+  table.t th{background:var(--mono-bg); font-weight:600;}
+  table.t td.s{font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
+  table.t tr.hi td{background:var(--accent2-soft); font-weight:600;}
+  .key{border-left:3px solid var(--accent2); background:var(--accent2-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:72ch;}
+  .back{font-size:14px;}
+  /* brickwork series navigation */
+  .layout{max-width:1080px; margin:0 auto; display:grid; grid-template-columns:220px minmax(0,1fr); gap:28px; align-items:start;}
+  .layout .page{margin:0;}
+  nav.series{position:sticky; top:24px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);}
+  nav.series .t{font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 10px;}
+  nav.series ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px;}
+  nav.series li a, nav.series li span{display:flex; justify-content:space-between; gap:8px; padding:7px 10px; border-radius:8px; font-size:14.5px; text-decoration:none; color:var(--ink);}
+  nav.series li a:hover{background:var(--mono-bg);}
+  nav.series li a[aria-current="page"]{background:var(--accent2-soft); color:var(--accent2); font-weight:600;}
+  nav.series li span{color:var(--muted);}
+  nav.series small{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); align-self:center;}
+  nav.series .home{display:block; margin-top:12px; font-size:13.5px;}
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} nav.series{position:static;} }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="series" aria-label="Brickwork series">
+  <p class="t">Brickwork circuit</p>
+  <ol>
+    <li><a href="brickwork-step.html">0 · One Trotter step <small>overview</small></a></li>
+    <li><a href="pair-gate.html">1 · Pair gate <small>hop</small></a></li>
+    <li><a href="swap.html" aria-current="page">2 · SWAP <small>move</small></a></li>
+    <li><a href="electric-gate.html">3 · Electric gate <small>phase</small></a></li>
+    <li><a href="mass-term.html">4 · Mass term <small>phase</small></a></li>
+  </ol>
+  <a class="home" href="index.html">← Learn index</a>
+</nav>
+<div class="page">
+
+<header>
+  <p class="eyebrow">Learn · hadron circuit · brickwork, part 2</p>
+  <h1>The SWAP: moving qubits, no physics</h1>
+  <p class="sub">Brick 7, worked by hand on four qubits after bricks 1 and 2. States are written |q0 q1 q2 q3⟩.</p>
+</header>
+
+<section class="panel">
+  <h2>1. The gate</h2>
+  <div class="fig"><img src="swap-brick.png" alt="Pair gates (bricks 1 and 2) on q0,q1 and q2,q3, then SWAP (brick 7) on q1,q2"></div>
+  <p class="cap">From <code>brickwork_annotated.png</code>: pair gates 1 and 2, then SWAP 7 on q1 and q2.</p>
+  <p>SWAP exchanges two qubits. On hardware it is 3 CNOTs; by hand you don't need them: <strong>in every term, exchange the two bits</strong>. Each amplitude stays with its term — only the bit labels move, never the numbers.</p>
+</section>
+
+<section class="panel">
+  <h2>2. The state before the SWAP</h2>
+  <p>q1 is entangled with q0 (after the pair gate), so it has no state of its own: write the <strong>joint state</strong> of every qubit involved. Brick 2 does to (q2, q3) exactly what brick 1 did to (q0, q1), so the 4-qubit state is the product of two pair-gate results:</p>
+<pre>(cos θ |01⟩ − i sin θ |10⟩)_q0q1  ⊗  (cos θ |01⟩ − i sin θ |10⟩)_q2q3
+
+= cos²θ |0101⟩ − i sinθ cosθ |0110⟩ − i sinθ cosθ |1001⟩ − sin²θ |1010⟩</pre>
+</section>
+
+<section class="panel">
+  <h2>3. SWAP(q1, q2): exchange bits 2 and 3</h2>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>before</th><th>amplitude</th><th>after</th></tr>
+    <tr><td class="s">|0<b>10</b>1⟩</td><td class="s">cos²θ</td><td class="s">|0<b>01</b>1⟩</td></tr>
+    <tr><td class="s">|0<b>11</b>0⟩</td><td class="s">−i sinθ cosθ</td><td class="s">|0<b>11</b>0⟩ (both 1: unchanged)</td></tr>
+    <tr><td class="s">|1<b>00</b>1⟩</td><td class="s">−i sinθ cosθ</td><td class="s">|1<b>00</b>1⟩ (both 0: unchanged)</td></tr>
+    <tr><td class="s">|1<b>01</b>0⟩</td><td class="s">−sin²θ</td><td class="s">|1<b>10</b>0⟩</td></tr>
+  </table>
+  </div>
+<pre>after SWAP:  cos²θ |0011⟩ − i sinθ cosθ |0110⟩ − i sinθ cosθ |1001⟩ − sin²θ |1100⟩</pre>
+</section>
+
+<section class="panel">
+  <h2>Key points</h2>
+  <ul>
+    <li><strong>The probabilities don't change at all.</strong> The SWAP is pure bookkeeping, no physics.</li>
+    <li><strong>Every term still has exactly two 1s</strong> — the particle number is conserved.</li>
+    <li><strong>Why it's there:</strong> after the SWAP, q2 holds what was in q1. So the next pair gate, brick 12 on (q2, q3), actually lets <em>old q1 and q3</em> interact — two qubits that were not neighbours before. That is how the SWAPs connect positions the first round of pair gates could not reach.</li>
+  </ul>
+  <p class="cap">Next: the electric gate (bricks 18–23).</p>
+</section>
+
+</div>
+</div>
+</body>
+</html>

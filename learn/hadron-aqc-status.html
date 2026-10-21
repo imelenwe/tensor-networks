@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hadron AQC Status</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570;
+    --border:#D3D9D7; --accent:#B5702A; --accent-soft:#F3E3CF;
+    --accent2:#2F7A72; --accent2-soft:#DCEEEB; --mono-bg:#F5F3EE;
+    --shadow:0 1px 2px rgba(20,24,29,.06), 0 8px 24px rgba(20,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+      --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+      --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+    --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+    --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 90px; line-height:1.6;}
+  .page{max-width:900px; margin:0 auto; display:flex; flex-direction:column; gap:26px;}
+  a{color:var(--accent2);}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px;}
+  h1{font-size:clamp(26px,4vw,34px); margin:0 0 8px; font-weight:700; text-wrap:balance; line-height:1.2;}
+  .sub{color:var(--muted); font-size:15.5px; max-width:72ch; margin:0;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:14px; scroll-margin-top:16px;}
+  .panel h2{margin:0; font-size:21px; line-height:1.3;}
+  .panel p, .panel li{font-size:15px; max-width:74ch; margin:0;}
+  .panel ul, .panel ol{margin:0; padding-left:22px; display:flex; flex-direction:column; gap:8px;}
+  .panel li ul{margin-top:4px; gap:3px;}
+  li.tech{color:var(--muted); font-size:13.5px; list-style-type:"› ";}
+  code{font-family:'IBM Plex Mono',monospace; font-size:.92em; background:var(--mono-bg); padding:1px 5px; border-radius:4px;}
+  .scroll{overflow-x:auto; max-width:100%;}
+  table.t{border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums;}
+  table.t th, table.t td{border:1px solid var(--border); padding:7px 10px; text-align:left; vertical-align:top;}
+  table.t th{background:var(--mono-bg); font-weight:600; white-space:nowrap;}
+  table.t td.n{font-family:'IBM Plex Mono',monospace; text-align:right; white-space:nowrap;}
+  table.t tr.hi td{background:var(--accent2-soft);}
+  table.t tr.no td{color:var(--muted);}
+  .notes{color:var(--muted); font-size:13.5px;}
+  .key{border-left:3px solid var(--accent2); background:var(--accent2-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:76ch;}
+  .warn{border-left:3px solid var(--accent); background:var(--accent-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:76ch;}
+  .pending{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent); white-space:nowrap;}
+  .back{font-size:14px;}
+  pre.tn{font-family:'IBM Plex Mono',monospace; font-size:13px; background:var(--mono-bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin:8px 0 0; overflow-x:auto; line-height:1.45;}
+  .states{background:var(--mono-bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-top:8px; display:flex; flex-direction:column; gap:6px; overflow-x:auto;}
+  .states .cap{font-size:13px; color:var(--muted); margin:0;}
+  .srow{display:flex; align-items:center; gap:4px;}
+  .slab{width:64px; flex:none; font-size:13px; font-weight:600;}
+  .q{width:26px; height:26px; flex:none; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:5px; font-family:'IBM Plex Mono',monospace; font-size:13px; background:var(--surface); color:var(--muted);}
+  .q.on{background:var(--accent2-soft); color:var(--ink); font-weight:600;}
+  .q.flip{outline:2px solid var(--accent); outline-offset:1px;}
+  dl.gl{display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; margin:0; font-size:14.5px;}
+  dl.gl dt{font-weight:600;}
+  dl.gl dd{margin:0; color:var(--ink);}
+  @media (max-width:560px){ dl.gl{grid-template-columns:1fr;} dl.gl dd{margin-bottom:6px;} }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <p class="eyebrow">Learn · hadron circuit compression · status</p>
+  <h1>Compressing the 120-qubit hadron circuit with AQC-Tensor</h1>
+  <p class="sub">Benchmark: the quantum-advantage-tracker instance <code>su2_hadron_dynamics_lsh_x_100_meson</code> and its vacuum <code>_SCV</code>: 60 sites, 120 qubits, 20 Trotter steps. Goal: a much shallower circuit that gives the same state.</p>
+  <p class="back"><a href="index.html">← Back to the learn index</a></p>
+</header>
+
+<!-- ============ 1. SUMMARY ============ -->
+<section class="panel" id="summary">
+  <h2>1. Summary</h2>
+  <div class="key">Training used to run out of RAM (computer memory) above ~28 qubits. Changing <em>the order in which the tensor network is contracted</em> fixed it: 40 qubits now train on a laptop, and 120 qubits should fit on one cluster node. The trained circuits have about <strong>4× fewer two-qubit gates</strong>.</div>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>qubits</th><th>angles trained</th><th>contraction order</th><th>machine</th><th>peak RAM</th><th>training time</th><th>fidelity</th><th>CNOTs: Trotter → AQC</th></tr>
+    <tr><td class="n">12</td><td class="n">933</td><td>greedy (default)</td><td>laptop</td><td class="n">small</td><td class="n">10 s</td><td class="n">0.9999</td><td class="n">1231 → 278</td></tr>
+    <tr><td class="n">24</td><td class="n">2,010</td><td>greedy (default)</td><td>laptop</td><td class="n">5.0 GB</td><td class="n">11 min</td><td class="n">0.9988</td><td class="n">—</td></tr>
+    <tr class="hi"><td class="n">24</td><td class="n">2,010</td><td>cotengra</td><td>laptop</td><td class="n">4.0 GB</td><td class="n">6 min</td><td class="n">0.9988</td><td class="n">—</td></tr>
+    <tr><td class="n">32</td><td class="n">2,728</td><td>greedy (default)</td><td>cluster</td><td class="n">~50 GB</td><td class="n">28 h</td><td class="n">0.991</td><td class="n">3616 → 846</td></tr>
+    <tr class="hi"><td class="n">32</td><td class="n">2,728</td><td>cotengra</td><td>laptop</td><td class="n">9.7 GB</td><td class="n">20 min</td><td class="n">0.991</td><td class="n">—</td></tr>
+    <tr class="no"><td class="n">40</td><td class="n">3,446</td><td>greedy (default)</td><td>—</td><td colspan="4">not possible: 28 qubits already ran out of 64 GB</td></tr>
+    <tr class="hi"><td class="n">40</td><td class="n">3,446</td><td>cotengra</td><td>laptop</td><td class="n">13.3 GB</td><td class="n">1.5 h</td><td class="n">0.985</td><td class="n">4570 → 1030</td></tr>
+    <tr class="no"><td class="n">120</td><td class="n">10,626</td><td>greedy (default)</td><td>—</td><td colspan="4">not possible: one intermediate tensor alone would be 2199 GB</td></tr>
+    <tr class="hi"><td class="n">120</td><td class="n">10,626</td><td>cotengra</td><td>cluster</td><td class="n">~50–55 GB</td><td class="n">~10–12 h</td><td class="n">~0.95 ?</td><td class="n">—</td></tr>
+  </table>
+  </div>
+  <ul>
+    <li class="tech">All rows: meson state, 20 Trotter steps, AQC circuit = 4 Trotter steps with every gate trainable (angles trained: counted from the circuit, ~90 per qubit), target MPS at bond 1024 (64 at 12 qubits), AQC circuit started from 4 Trotter steps. Fidelity = the training's own, exact (no bond limit). Vacuum results are similar.</li>
+    <li class="tech">"—" in CNOTs: quick tests that measured RAM and time only. RAM = peak memory used by the training process. 32-qubit cluster run used the earlier electric sign (+0.01); the others use the official −0.01.</li>
+    <li class="tech">Last row is an <strong>estimate</strong> from the 24–40 qubit runs, not a run. "Training time" excludes building the target (~1 h at 120 qubits).</li>
+  </ul>
+</section>
+
+<!-- ============ 2. HOW IT WORKS ============ -->
+<section class="panel" id="process">
+  <h2>2. How it works (our process)</h2>
+  <ol>
+    <li><strong>The chain and its two starting states.</strong> 60 sites, 2 qubits per site = 120 qubits. We run two circuits that differ only in their starting state:
+      <ul>
+        <li><strong>vacuum</strong>: no particles anywhere (the "strong-coupling vacuum");</li>
+        <li><strong>meson</strong>: the same vacuum plus <strong>one quark–antiquark pair (a meson) created at the centre</strong> of the chain.</li>
+      </ul>
+      <div class="states" aria-label="Starting states for 12 qubits">
+        <p class="cap">Example, 6 sites = 12 qubits. Each box is one qubit at the start of the circuit (qubit 0 on the left).</p>
+        <div class="srow"><span class="slab">vacuum</span><span class="q">0</span><span class="q on">1</span><span class="q">0</span><span class="q on">1</span><span class="q">0</span><span class="q on">1</span><span class="q">0</span><span class="q on">1</span><span class="q">0</span><span class="q on">1</span><span class="q">0</span><span class="q on">1</span></div>
+        <div class="srow"><span class="slab">meson</span><span class="q">0</span><span class="q on">1</span><span class="q">0</span><span class="q on">1</span><span class="q">0</span><span class="q flip">0</span><span class="q flip on">1</span><span class="q on">1</span><span class="q">0</span><span class="q on">1</span><span class="q">0</span><span class="q on">1</span></div>
+        <p class="cap">The meson differs from the vacuum only in the two middle qubits (outlined): flipping them creates the quark–antiquark pair. The circuit then lets it spread; the <em>meson signal</em> is the difference between the two circuits' particle counts, site by site.</p>
+      </div>
+      <ul><li class="tech">All qubits start in |0⟩; X gates at the start of the circuit set the pattern. Vacuum: X on every odd qubit (in this encoding, "1" on those qubits means <em>no</em> antiquark — staggered fermions put quarks on even sites, antiquarks on odd sites). Meson: also X on qubits N/2−1 and N/2 (qubits 59 and 60 at 120 qubits).</li></ul>
+    </li>
+    <li><strong>The Trotter circuit.</strong> Time evolution is cut into 20 Trotter steps. Each step is a fixed pattern of gates: pair gates (particles hop, pairs are created), electric-field gates, SWAPs to bring neighbours together, and mass rotations.
+      <ul><li class="tech">Per step: kinetic 0.15, electric field −0.01, mass 0.03. 120 qubits × 20 steps ≈ 17k two-qubit gates after transpiling. Identical to the tracker's official circuit files.</li></ul>
+    </li>
+    <li><strong>The target.</strong> We simulate the full 20-step circuit once, with TEBD in quimb, and keep the final state as an MPS. This is what the short circuit must reproduce.
+      <ul><li class="tech">Gates applied one by one; each link (bond) cut to at most 1024. At 120 qubits this keeps ~98.5% of the norm.</li></ul>
+    </li>
+    <li><strong>The AQC circuit and its starting angles.</strong> Same starting state, same gate pattern, but only <strong>4 Trotter steps</strong>, each 5× bigger (20 / 4). Every gate's angle becomes a trainable parameter. The starting angles are exactly this 4-step Trotter circuit, so training starts from a sensible, already-close circuit.
+      <ul><li class="tech">IBM's <code>generate_ansatz_from_circuit</code> turns each two-qubit block into a general parametrised block and returns angles that reproduce the 4-step circuit exactly. 40 qubits: 3446 angles; 120 qubits: 10,626 (about 90 per qubit).</li></ul>
+    </li>
+    <li><strong>Training.</strong> Turn the angles until the AQC circuit's state matches the target as closely as possible. Each training step computes the fidelity and its slope for every angle.
+      <ul><li class="tech"><code>MaximizeStateFidelity</code> (IBM <code>qiskit-addon-aqc-tensor</code>), optimiser L-BFGS-B, gradient by jax automatic differentiation.</li></ul>
+    </li>
+    <li><strong>Result.</strong> A shallow circuit. We transpile both circuits the same way and compare two-qubit gates (CNOTs) and depth, then re-check the fidelity independently.
+      <ul><li class="tech">Transpiled to a linear chain, optimisation level 3. Recheck: the trained circuit re-simulated as an MPS at bond 1024.</li></ul>
+    </li>
+  </ol>
+
+  <h2 style="font-size:17px; margin-top:6px;">Why the contraction order matters</h2>
+  <ul>
+    <li><strong>What each training step computes.</strong> One number: the overlap between the target state and the state the AQC circuit makes, ⟨target | AQC circuit | 00…0⟩. The fidelity is its size squared. The training needs this number and its slope for every angle, hundreds of times.</li>
+    <li><strong>As a tensor network.</strong> Start from |00…0⟩, stack the AQC circuit's gates on top (each gate is a small tensor), and put the conjugated target MPS on the very top. Every qubit line from the circuit is joined to the matching leg of the target MPS. <strong>Contracting</strong> means summing over all joined indices until a single number is left: that number is the overlap.
+<pre class="tn">  target MPS (conjugated)   ●──●──●──●──●──●      ← bonds up to 1024
+                            │  │  │  │  │  │      ← qubit legs joined
+  AQC circuit (4 steps)     ┃ ▢▢ ┃ ▢▢ ┃ ▢▢ ┃      ← one tensor per gate
+                            ▢▢ ┃ ▢▢ ┃ ▢▢ ┃ ...    (10,626 angles at 120 qubits)
+                            │  │  │  │  │  │
+  start                    |0⟩|0⟩|0⟩|0⟩|0⟩|0⟩</pre>
+      <ul><li class="tech">IBM's library builds exactly this network (<code>target.H @ circ.psi</code>, ~20,000 tensors at 120 qubits) and lets quimb contract it; jax differentiates the contraction to get the slopes.</li></ul>
+    </li>
+    <li><strong>Order matters.</strong> Tensors are merged two at a time. The final number is the same in any order, but the intermediate tensors are not: an intermediate keeps every index that is still open, and each open qubit index doubles its size, each open bond index multiplies it by up to 1024.
+      <ul><li class="tech">Small example: matrices A (1000×2), B (2×1000), C (1000×1). (A·B)·C passes through a 1000×1000 intermediate; A·(B·C) only through a 2×1.</li></ul>
+    </li>
+    <li><strong>Greedy</strong> (quimb's default, used by IBM's library) always merges the pair that is cheapest <em>right now</em>, without looking ahead. Late in the contraction this can leave a tensor with many open indices — one enormous intermediate. jax keeps all intermediates for the slopes, so that tensor sits in RAM.
+      <ul><li class="tech">This explains the odd measurements: greedy's largest intermediate is 17 GB at 28 qubits but 8.6 GB at 32, and 2199 GB at 120.</li></ul>
+    </li>
+    <li><strong>cotengra</strong> (quimb's companion library) plans the whole order first. It cuts the network into two halves joined by as few indices as possible, cuts each half again, and so on; it tries thousands of such cut plans and keeps the one whose largest intermediate is smallest. Same overlap, far less RAM and time.
+      <ul>
+        <li class="tech">Cuts made by the <code>kahypar</code> partitioner. Switched on only during training (<code>with qtn.contract_strategy(planner)</code>); IBM's code is unchanged.</li>
+        <li class="tech">The plan depends only on the network's shape, not on the angle values, so it is made once (~5 min at 40 qubits, ~30 min at 120) and reused for every training step.</li>
+        <li class="tech">Checked at 24 qubits: same fidelity as greedy at every training step; only RAM and time differ.</li>
+      </ul>
+    </li>
+  </ul>
+</section>
+
+<!-- ============ 3. SINCE LAST MEETING ============ -->
+<section class="panel" id="status">
+  <h2>3. Status since the last meeting</h2>
+  <p>Last time: AQC-Tensor implemented from scratch (our own MPS code and TEBD), working on the 12-qubit hadron circuit.</p>
+  <ol>
+    <li><strong>Moved to IBM's library and quimb.</strong> Checked that both give the same target as our own TEBD.
+      <ul><li class="tech">Fidelity between the two targets 1.000000000000 at 12 qubits. 12 and 32 qubits at 10 steps: ~3× fewer CNOTs at fidelity ≥ 0.999.</li></ul>
+    </li>
+    <li><strong>Moved to the benchmark's 20 Trotter steps</strong> and wrote a script for long cluster runs (saves progress, resumes after a crash).
+      <ul><li class="tech">12 qubits: 1231 → 278 CNOTs at fidelity 0.9999.</li></ul>
+    </li>
+    <li><strong>32 qubits on the cluster worked, but cost ~50 GB of RAM and up to 28 h per state.</strong>
+      <ul><li class="tech">jax gradient (the library's default way to get the slopes), greedy contraction order, 32-bit numbers.</li></ul>
+    </li>
+    <li><strong>Tried IBM's other gradient, "explicit": very little RAM, but the result was clearly worse, so we dropped it.</strong> The library offers two ways to get the slopes. jax works on the exact circuit (accurate, but heavy). "Explicit" works on the circuit's MPS, cut to a chosen bond — so it needs little RAM, but if that bond is too small it trains on a blurred copy of the state and steers the angles the wrong way.
+      <div class="scroll" style="margin-top:6px;">
+      <table class="t">
+        <tr><th>32 qubits, 20 steps, meson</th><th>RAM</th><th>fidelity (true, checked exactly)</th></tr>
+        <tr><td>jax (exact circuit)</td><td class="n">~50 GB</td><td class="n">0.991</td></tr>
+        <tr><td>explicit, MPS cut to bond 256</td><td class="n">0.6–2 GB</td><td class="n">0.949</td></tr>
+      </table>
+      </div>
+      <ul>
+        <li class="tech">Why it fails here: after 20 Trotter steps the state needs bond ~1024 (the target is built at 1024). At bond 256 the explicit gradient only "sees" a truncated state, so it optimises the fidelity of that blurred copy, not of the real circuit.</li>
+        <li class="tech">Why not simply run explicit at bond 1024: it computes one MPS overlap per angle per step, and each overlap costs ∝ bond³. At bond 1024 that is 64× the work of bond 256, times 10,626 angles at 120 qubits — hours for a single training step.</li>
+        <li class="tech">It also runs in 64-bit numbers and rarely stops on its own, so runs needed a time limit (<code>--max-hours</code>).</li>
+        <li class="tech">Verified in the library source: with jax the library builds the exact circuit (<code>contract=False</code>) and ignores the bond limit; with explicit it uses the bond-limited MPS.</li>
+      </ul>
+    </li>
+    <li><strong>Matched the official benchmark circuit</strong> (electric-field sign, from the tracker's circuit files) and made building targets ~2× faster.
+      <ul><li class="tech">The tutorial code used +0.01; the official files use −0.01. Same particle counts, different full state (overlap 0.984 at 12 qubits). SVD cutoff 1e-10 instead of 0.</li></ul>
+    </li>
+    <li><strong>Checked the leaderboard.</strong> Classical entries only compute the final number; none produces a shorter circuit or uses AQC. The hardware run of the full circuit got the wrong sign. A shallow 120-qubit circuit would be new.
+      <ul><li class="tech">Tracker issues #227 (quimb MPS, bond 800, ~50 min on a laptop), #250, #255, #257; hardware #149: ~17k two-qubit gates, result −0.077 vs about 0.117.</li></ul>
+    </li>
+    <li><strong>Found and fixed the RAM blow-up</strong> (contraction order, section 2). Trained 24, 32 and 40 qubits on a laptop.</li>
+    <li><strong>40 qubits, both states, full run.</strong>
+      <div class="scroll" style="margin-top:6px;">
+      <table class="t">
+        <tr><th>40 qubits, 20 steps</th><th>meson</th><th>vacuum</th></tr>
+        <tr><td>fidelity (training, exact)</td><td class="n">0.9852</td><td class="n">0.9775</td></tr>
+        <tr><td>fidelity (recheck at bond 1024)</td><td class="n">0.9832</td><td class="n">0.9600</td></tr>
+        <tr><td>CNOTs: Trotter → AQC</td><td class="n">4570 → 1030</td><td class="n">4570 → 1039</td></tr>
+        <tr><td>two-qubit depth</td><td class="n">297 → 65</td><td class="n">297 → 65</td></tr>
+      </table>
+      </div>
+    </li>
+    <li><strong>Our current setup</strong> (what every run from now on uses):
+      <div class="scroll" style="margin-top:6px;">
+      <table class="t">
+        <tr><th>part</th><th>setting</th></tr>
+        <tr><td>circuit</td><td>official benchmark circuit: kinetic 0.15, electric field −0.01, mass 0.03 per Trotter step; 20 Trotter steps; vacuum and meson as separate runs</td></tr>
+        <tr><td>target</td><td>quimb TEBD (MPS), bond capped at 1024, SVD cutoff 1e-10; gates on the same qubit pair merged first</td></tr>
+        <tr><td>AQC circuit</td><td>the same circuit with 4 Trotter steps (each 5× bigger), every gate trainable; starting angles = that 4-step circuit (IBM <code>generate_ansatz_from_circuit</code>)</td></tr>
+        <tr><td>training</td><td>IBM <code>qiskit-addon-aqc-tensor</code>, cost = fidelity with the target, optimiser L-BFGS-B</td></tr>
+        <tr><td>slopes (gradient)</td><td><strong>jax</strong>, exact circuit, 32-bit numbers</td></tr>
+        <tr><td>contraction order</td><td><strong>cotengra</strong> planner with kahypar, only during training; 5 min of planning up to 40 qubits, ~30 min at 120; plan saved and reused</td></tr>
+        <tr><td>stopping</td><td>when the fidelity stops improving, or after a time limit per state</td></tr>
+        <tr><td>checks</td><td>fidelity re-simulated as an MPS at the target's bond; CNOTs and depth after transpiling to a line of qubits (level 3); count of filled seats of every target</td></tr>
+        <tr><td>machines</td><td>laptop up to 40 qubits (≤ 14 GB RAM); cluster node for 120 qubits (~50–55 GB RAM, 128 GB requested)</td></tr>
+      </table>
+      </div>
+      <ul>
+        <li class="tech">Script: <code>run_hadron_aqc.py --sites 20 --steps 20 --coarse-steps 4 --target-bond 1024 --training-bond 512 --states meson vacuum --gradient jax --planner-minutes 5 --max-hours 1.5</code> (the 40-qubit run).</li>
+        <li class="tech">Versions: qiskit 2.5.0, qiskit-addon-aqc-tensor 0.3.1, quimb 1.15.0, jax 0.11.2, cotengra 0.8.2, kahypar 1.3.7. Stopping tolerances: ftol 1e-14, gtol 1e-10.</li>
+      </ul>
+    </li>
+  </ol>
+</section>
+
+<!-- ============ 4. NEXT ============ -->
+<section class="panel" id="next">
+  <h2>4. Next steps</h2>
+  <ol>
+    <li><strong>Is fidelity ~0.985 good enough?</strong> Compare particle counts per site and the meson signal (meson counts minus vacuum counts) with the target, at 40 qubits. <span class="pending">running</span>
+      <br>If not, the tricks still up our sleeve, cheapest first:
+      <ul>
+        <li><strong>Train longer.</strong> Both 40-qubit runs were stopped by a 1.5 h limit. The vacuum was still climbing; the meson had nearly levelled off at 0.985.
+          <ul><li class="tech">Cheap: ~35–50 s per training step at 40 qubits, ~5 min at 120 (estimate). Continue from the saved angles until it stops improving; whatever is still missing then is the circuit's limit, not the time limit.</li></ul>
+        </li>
+        <li><strong>A slightly bigger AQC circuit.</strong> Start from 5 Trotter steps instead of 4: more angles to turn, a few more CNOTs.
+          <ul><li class="tech">~25% more angles and CNOTs (40 qubits: ~1300 instead of 1030 CNOTs, still ~3.5× fewer than Trotter's 4570).</li></ul>
+        </li>
+        <li><strong>Train for what we measure.</strong> Add a per-site term to the cost, so training also rewards getting each site right, not only the whole state.
+          <ul><li class="tech">As in the original AQC-Tensor paper (arXiv:2301.08609): global overlap plus single-qubit terms. Needs our own loss function (IBM's library only has the global fidelity), but quimb's optimiser accepts one.</li></ul>
+        </li>
+        <li><strong>More precise numbers at the end.</strong> Finish the training in 64-bit instead of 32-bit numbers.
+          <ul><li class="tech">32-bit jax can stop early near high fidelity (rounding). 64-bit roughly doubles RAM, so only for a short final polish.</li></ul>
+        </li>
+        <li><strong>A sharper target (120 qubits only).</strong> Build the target at bond 1536–2048 instead of 1024.
+          <ul><li class="tech">At 40 qubits the target loses ≤ 0.3%, far less than the circuit's gap, so it would not help there. At 120 qubits it loses ~1.2–1.5%, a real share of the gap — but the bond enters every training contraction, so RAM and time per step go up; estimate with the planner before trying.</li></ul>
+        </li>
+      </ul>
+    </li>
+    <li><strong>120 qubits on the cluster:</strong> meson and vacuum, ~50–55 GB and ~10–12 h each.</li>
+    <li><strong>Open question:</strong> the mass term barely affects the dynamics in this circuit. Keep the benchmark circuit as published, or also study a corrected version?</li>
+    <li><strong>Open question: one circuit for any starting state?</strong> Today the AQC circuit is trained to reproduce one output state, so it is only correct for the starting state it was trained from (vacuum or meson). To work for any starting state, we would compress the 20-step time evolution itself instead of one state. That could beat Trotter for every input, but it is likely much more expensive.
+      <ul>
+        <li class="tech">Target = the 20-step evolution operator as an MPO; cost = overlap of the two operators, |Tr(V†U)|²/4<sup>N</sup>. Operator compression reported 2–6× shallower circuits than Trotter at equal error on 100–200 qubit spin chains (arXiv:2409.16361), and a small trained block can be tiled to larger sizes (arXiv:2311.06347).</li>
+        <li class="tech">Risk: the operator is usually far more entangled than one state, so the MPO bond needed after 20 steps may be well above our state bond of 1024. Middle way: train on a few starting states at once (vacuum, meson, a few others) — one training for both of our circuits.</li>
+      </ul>
+    </li>
+    <li><strong>Open question: can we remove the SWAP overhead?</strong> About a third of the two-qubit gates in each Trotter step are SWAPs that only move qubits next to each other. In the AQC circuit each one becomes a trainable 3-CNOT block. Training lets them do some useful work, but probably not a third's worth.
+      <ul>
+        <li class="tech">12 qubits, step 0: 23 two-qubit positions = 10 pair + 7 SWAP + 6 electric. Every position becomes one 3-CNOT block (starting angles of a SWAP block: all zero).</li>
+        <li class="tech">Options: (a) relabel qubits in software instead of swapping, where gates stay nearest-neighbour; (b) a leaner ansatz with fewer blocks per layer; (c) after training, prune blocks that are close to a SWAP or to doing nothing, then retrain briefly; (d) hold one angle at zero in suitable blocks, which saved 12–14% CNOTs in a parallel implementation.</li>
+      </ul>
+    </li>
+  </ol>
+  <div class="warn">All 120-qubit figures are estimates from runs at 24–40 qubits. Nothing has been trained at 120 qubits yet.</div>
+</section>
+
+<!-- ============ 5. GLOSSARY ============ -->
+<section class="panel" id="glossary">
+  <h2>5. Words used on this page</h2>
+  <dl class="gl">
+    <dt>site</dt><dd>One point of the 1-D lattice. 2 qubits per site; 60 sites = 120 qubits.</dd>
+    <dt>quark / antiquark</dt><dd>The matter particles. Staggered encoding: quarks live on even sites, antiquarks on odd sites.</dd>
+    <dt>vacuum</dt><dd>The starting state with no particles (strong-coupling vacuum).</dd>
+    <dt>meson</dt><dd>A quark–antiquark pair bound by the gauge field (a hadron). Our meson circuit starts from the vacuum with one meson created at the centre.</dd>
+    <dt>meson signal</dt><dd>Particle count per site in the meson circuit minus the same in the vacuum circuit. Removes the background and shows how the meson spreads.</dd>
+    <dt>count of filled seats</dt><dd>The total particle number. Must equal the number of sites; a health check on every simulated state.</dd>
+    <dt>Trotter step</dt><dd>One small slice of time evolution, built from a fixed pattern of gates. The benchmark uses 20.</dd>
+    <dt>MPS</dt><dd>Matrix product state: the state stored as a chain of small tensors, one per qubit.</dd>
+    <dt>bond</dt><dd>The size of the index linking two neighbouring MPS tensors. Bigger bond = more entanglement kept = more RAM. Capped at 1024 here.</dd>
+    <dt>TEBD</dt><dd>Apply the circuit's gates to the MPS one by one, cutting each bond back to the cap. How the target is built.</dd>
+    <dt>target</dt><dd>The MPS of the full 20-step circuit. What the short circuit must reproduce.</dd>
+    <dt>AQC-Tensor</dt><dd>Approximate quantum compiling with tensor networks: train a short parametrised circuit to reproduce the target MPS (IBM, arXiv:2301.08609; <code>qiskit-addon-aqc-tensor</code>).</dd>
+    <dt>fidelity</dt><dd>|⟨target | circuit state⟩|²: 1 = identical states, 0 = nothing in common.</dd>
+    <dt>contraction</dt><dd>Summing over the shared indices of a tensor network, two tensors at a time, until the result is left.</dd>
+    <dt>intermediate tensor</dt><dd>A tensor created part-way through a contraction. Its size decides the RAM needed.</dd>
+    <dt>greedy / cotengra</dt><dd>Two ways of choosing the contraction order: step-by-step cheapest (greedy, quimb's default) vs. planned in advance (cotengra).</dd>
+    <dt>jax</dt><dd>The library that computes the slope of the fidelity for every angle (automatic differentiation).</dd>
+    <dt>CNOT, depth</dt><dd>CNOT: the two-qubit gate, the main source of error on hardware. Depth: number of gate layers. Both counted after transpiling to a line of qubits.</dd>
+  </dl>
+</section>
+
+</div>
+</body>
+</html>

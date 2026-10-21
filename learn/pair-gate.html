@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Pair Gate</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570;
+    --border:#D3D9D7; --accent:#B5702A; --accent-soft:#F3E3CF;
+    --accent2:#2F7A72; --accent2-soft:#DCEEEB; --mono-bg:#F5F3EE;
+    --shadow:0 1px 2px rgba(20,24,29,.06), 0 8px 24px rgba(20,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+      --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+      --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+    --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+    --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 90px; line-height:1.6;}
+  .page{max-width:820px; margin:0 auto; display:flex; flex-direction:column; gap:24px;}
+  a{color:var(--accent2);}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px;}
+  h1{font-size:clamp(26px,4vw,34px); margin:0 0 8px; font-weight:700; line-height:1.2;}
+  .sub{color:var(--muted); font-size:15.5px; max-width:68ch; margin:0;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;}
+  .panel h2{margin:0; font-size:20px;}
+  .panel p, .panel li{font-size:15px; max-width:70ch; margin:0;}
+  .panel ul, .panel ol{margin:0; padding-left:22px; display:flex; flex-direction:column; gap:6px;}
+  code, .m{font-family:'IBM Plex Mono',monospace; font-size:.93em;}
+  code{background:var(--mono-bg); padding:1px 5px; border-radius:4px;}
+  pre{font-family:'IBM Plex Mono',monospace; font-size:14.5px; background:var(--mono-bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin:0; overflow-x:auto; line-height:1.6;}
+  .fig{background:#FFFFFF; border:1px solid var(--border); border-radius:10px; padding:10px; overflow-x:auto;}
+  .fig img{display:block; max-width:100%; height:auto;}
+  .cap{font-size:13.5px; color:var(--muted);}
+  .scroll{overflow-x:auto; max-width:100%;}
+  table.t{border-collapse:collapse; font-size:14.5px;}
+  table.t th, table.t td{border:1px solid var(--border); padding:7px 11px; text-align:left; vertical-align:top;}
+  table.t th{background:var(--mono-bg); font-weight:600;}
+  table.t td.s{font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
+  table.t tr.hi td{background:var(--accent2-soft); font-weight:600;}
+  .key{border-left:3px solid var(--accent2); background:var(--accent2-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:72ch;}
+  .back{font-size:14px;}
+  /* brickwork series navigation */
+  .layout{max-width:1080px; margin:0 auto; display:grid; grid-template-columns:220px minmax(0,1fr); gap:28px; align-items:start;}
+  .layout .page{margin:0;}
+  nav.series{position:sticky; top:24px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);}
+  nav.series .t{font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 10px;}
+  nav.series ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px;}
+  nav.series li a, nav.series li span{display:flex; justify-content:space-between; gap:8px; padding:7px 10px; border-radius:8px; font-size:14.5px; text-decoration:none; color:var(--ink);}
+  nav.series li a:hover{background:var(--mono-bg);}
+  nav.series li a[aria-current="page"]{background:var(--accent2-soft); color:var(--accent2); font-weight:600;}
+  nav.series li span{color:var(--muted);}
+  nav.series small{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); align-self:center;}
+  nav.series .home{display:block; margin-top:12px; font-size:13.5px;}
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} nav.series{position:static;} }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="series" aria-label="Brickwork series">
+  <p class="t">Brickwork circuit</p>
+  <ol>
+    <li><a href="brickwork-step.html">0 · One Trotter step <small>overview</small></a></li>
+    <li><a href="pair-gate.html" aria-current="page">1 · Pair gate <small>hop</small></a></li>
+    <li><a href="swap.html">2 · SWAP <small>move</small></a></li>
+    <li><a href="electric-gate.html">3 · Electric gate <small>phase</small></a></li>
+    <li><a href="mass-term.html">4 · Mass term <small>phase</small></a></li>
+  </ol>
+  <a class="home" href="index.html">← Learn index</a>
+</nav>
+<div class="page">
+
+<header>
+  <p class="eyebrow">Learn · hadron circuit · brickwork, part 1</p>
+  <h1>The Pair Gate: how a particle hops</h1>
+  <p class="sub">Brick 1 of the brickwork circuit, worked out by hand on two qubits. States are written |q0 q1⟩.</p>
+  <p class="back"><a href="index.html">← Back to the learn index</a></p>
+</header>
+
+<section class="panel">
+  <h2>1. The gate</h2>
+  <div class="fig"><img src="pair-gate-brick.png" alt="Pair gate (brick 1) on q0 and q1: CX, H, Rz(-0.15), CX, Rz(0.15), CX, H, CX, after an X flip on q1"></div>
+  <p class="cap">From <code>brickwork_annotated.png</code>. The dashed X on q1 is the vacuum's starting flip; the orange box is the pair gate.</p>
+  <p>In order: <span class="m">CX(control q1 → q0), H(q1), Rz(−0.15)(q1), CX(q0 → q1), Rz(+0.15)(q1), CX(q0 → q1), H(q1), CX(q1 → q0)</span>. 4 CNOTs. The 0.15 is the kinetic strength.</p>
+  <p>The only rule needed for the Rz turns: <span class="m">Rz(θ)|0⟩ = e<sup>−iθ/2</sup>|0⟩</span>, <span class="m">Rz(θ)|1⟩ = e<sup>+iθ/2</sup>|1⟩</span> — it only adds a phase, never changes probabilities. (As an operator: Rz(θ) = cos(θ/2)·I − i·sin(θ/2)·Z.)</p>
+</section>
+
+<section class="panel">
+  <h2>2. Worked by hand (θ = −0.15)</h2>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>state</th><th>gate</th><th>result</th></tr>
+    <tr><td class="s">start</td><td>X on q1</td><td class="s">|01⟩</td></tr>
+    <tr><td class="s">|φ1⟩</td><td>CX (q1 → q0)</td><td class="s">|11⟩</td></tr>
+    <tr><td class="s">|φ2⟩</td><td>H on q1</td><td class="s">(|10⟩ − |11⟩)/√2</td></tr>
+    <tr><td class="s">|φ3⟩</td><td>Rz(θ) on q1</td><td class="s">(e<sup>−iθ/2</sup>|10⟩ − e<sup>+iθ/2</sup>|11⟩)/√2</td></tr>
+    <tr><td class="s">|ψ4⟩</td><td>CX (q0 → q1)</td><td class="s">(e<sup>−iθ/2</sup>|11⟩ − e<sup>+iθ/2</sup>|10⟩)/√2</td></tr>
+    <tr><td class="s">|ψ5⟩</td><td>Rz(−θ) on q1</td><td class="s">(e<sup>−iθ</sup>|11⟩ − e<sup>+iθ</sup>|10⟩)/√2</td></tr>
+    <tr><td class="s">|ψ6⟩</td><td>CX (q0 → q1)</td><td class="s">(e<sup>−iθ</sup>|10⟩ − e<sup>+iθ</sup>|11⟩)/√2</td></tr>
+    <tr><td class="s">|ψ7⟩</td><td>H on q1</td><td class="s">½[e<sup>−iθ</sup>(|10⟩+|11⟩) − e<sup>+iθ</sup>(|10⟩−|11⟩)]</td></tr>
+    <tr class="hi"><td class="s">|ψ8⟩</td><td>CX (q1 → q0)</td><td class="s">½[e<sup>−iθ</sup>(|10⟩+|01⟩) − e<sup>+iθ</sup>(|10⟩−|01⟩)]</td></tr>
+  </table>
+  </div>
+  <div class="key"><strong>Why the two Rz turns don't cancel.</strong> Rz(θ) then Rz(−θ) on the same qubit would cancel — but a CNOT sits between them and flips q1 (because q0 = 1). The term that got e<sup>−iθ/2</sup> as "q1 = 0" is "q1 = 1" when the second Rz arrives, so it gets e<sup>−iθ/2</sup> again: the phases <em>add</em>. Had q0 been 0, they would cancel. An effect on q1 that depends on q0 is exactly a two-qubit interaction.</div>
+</section>
+
+<section class="panel">
+  <h2>3. |ψ8⟩ is two Bell states with opposite phases</h2>
+  <p>With the Bell states <span class="m">β01 = (|01⟩ + |10⟩)/√2</span> and <span class="m">β11 = (|01⟩ − |10⟩)/√2</span>:</p>
+<pre>|ψ8⟩ = (1/√2) [ e^(−iθ) β01  +  e^(+iθ) β11 ]
+
+start: |01⟩ = (1/√2) [ β01 + β11 ]</pre>
+  <p>Same two Bell states, same weights. The whole pair gate did only one thing: it turned β01's phase by e<sup>−iθ</sup> and β11's by e<sup>+iθ</sup>.</p>
+  <p><strong>Why these two Bell states?</strong> They are the eigenstates of the hopping operator <span class="m">XX + YY</span>. Using X|0⟩=|1⟩, X|1⟩=|0⟩, Y|0⟩=i|1⟩, Y|1⟩=−i|0⟩:</p>
+<pre>(XX + YY)|01⟩ = |10⟩ + |10⟩ = 2|10⟩
+(XX + YY)|10⟩ = 2|01⟩
+(XX + YY)|00⟩ = |11⟩ − |11⟩ = 0      (same for |11⟩)
+
+so  (XX + YY) β01 = +2 β01      (XX + YY) β11 = −2 β11</pre>
+  <p>An exponential of an operator turns each eigenstate by its own phase. With eigenvalues +2 and −2:</p>
+<pre>pair gate = exp(−iθ (XX + YY) / 2),   θ = −0.15
+β01 → e^(−iθ) β01      β11 → e^(+iθ) β11      |00⟩, |11⟩ unchanged</pre>
+  <p class="cap">Checked by computer: the 8-gate circuit equals this exponential exactly, for every input.</p>
+</section>
+
+<section class="panel">
+  <h2>4. The hop</h2>
+  <p>Collect the terms of |ψ8⟩ by basis state instead:</p>
+  <ul>
+    <li>|10⟩: (e<sup>−iθ</sup> − e<sup>iθ</sup>)/2 = <strong>−i sin θ</strong></li>
+    <li>|01⟩: (e<sup>−iθ</sup> + e<sup>iθ</sup>)/2 = <strong>cos θ</strong></li>
+  </ul>
+<pre>|ψ8⟩ = cos θ |01⟩ − i sin θ |10⟩</pre>
+  <p>With θ = −0.15:</p>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>outcome</th><th>amplitude</th><th>probability</th></tr>
+    <tr><td class="s">|01⟩ (where it started)</td><td class="s">cos 0.15 = 0.989</td><td><strong>97.8%</strong></td></tr>
+    <tr><td class="s">|10⟩ (the 1 moved to q0)</td><td class="s">+i·sin 0.15 = 0.149i</td><td><strong>2.2%</strong></td></tr>
+  </table>
+  </div>
+  <div class="key"><strong>This is the hop.</strong> The "1" (a particle) moves from q1 to q0 with a 2.2% chance per Trotter step. The total number of 1s stays exactly one — hopping moves particles, it doesn't create or destroy them here. Over many steps these small amounts build up, and that is the dynamics we are simulating. And the two Bell states getting opposite phases is <em>why</em> the hop happens.</div>
+</section>
+
+<section class="panel">
+  <h2>Key points</h2>
+  <ul>
+    <li>Pair gate = 8 gates, 4 CNOTs, = exp(−iθ(XX+YY)/2) with θ = −0.15 (kinetic strength 0.15).</li>
+    <li>Rz only adds phases; the CNOT between the two Rz turns makes them add instead of cancel.</li>
+    <li>β01 and β11 are the eigenstates of XX + YY (eigenvalues +2, −2); the gate gives them opposite phases.</li>
+    <li>Result: |01⟩ → cos θ |01⟩ − i sin θ |10⟩: the particle hops with probability sin²θ ≈ 2.2% per step; the number of particles is conserved.</li>
+  </ul>
+  <p class="cap">Next: the SWAP (bricks 7–11) and the electric gate (bricks 18–23).</p>
+</section>
+
+</div>
+</div>
+</body>
+</html>

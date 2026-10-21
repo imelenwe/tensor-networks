@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Mass Term</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570;
+    --border:#D3D9D7; --accent:#B5702A; --accent-soft:#F3E3CF;
+    --accent2:#2F7A72; --accent2-soft:#DCEEEB; --mono-bg:#F5F3EE;
+    --shadow:0 1px 2px rgba(20,24,29,.06), 0 8px 24px rgba(20,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+      --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+      --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+    --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+    --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 90px; line-height:1.6;}
+  .page{max-width:820px; margin:0 auto; display:flex; flex-direction:column; gap:24px;}
+  a{color:var(--accent2);}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px;}
+  h1{font-size:clamp(26px,4vw,34px); margin:0 0 8px; font-weight:700; line-height:1.2;}
+  .sub{color:var(--muted); font-size:15.5px; max-width:68ch; margin:0;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;}
+  .panel h2{margin:0; font-size:20px;}
+  .panel p, .panel li{font-size:15px; max-width:70ch; margin:0;}
+  .panel ul, .panel ol{margin:0; padding-left:22px; display:flex; flex-direction:column; gap:6px;}
+  code, .m{font-family:'IBM Plex Mono',monospace; font-size:.93em;}
+  code{background:var(--mono-bg); padding:1px 5px; border-radius:4px;}
+  pre{font-family:'IBM Plex Mono',monospace; font-size:14.5px; background:var(--mono-bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin:0; overflow-x:auto; line-height:1.6;}
+  .fig{background:#FFFFFF; border:1px solid var(--border); border-radius:10px; padding:10px; overflow-x:auto;}
+  .fig img{display:block; max-width:100%; height:auto;}
+  .cap{font-size:13.5px; color:var(--muted);}
+  .scroll{overflow-x:auto; max-width:100%;}
+  table.t{border-collapse:collapse; font-size:14.5px;}
+  table.t th, table.t td{border:1px solid var(--border); padding:7px 11px; text-align:left; vertical-align:top;}
+  table.t th{background:var(--mono-bg); font-weight:600;}
+  table.t td.s{font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
+  table.t tr.hi td{background:var(--accent2-soft); font-weight:600;}
+  .key{border-left:3px solid var(--accent2); background:var(--accent2-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:72ch;}
+  .back{font-size:14px;}
+  /* brickwork series navigation */
+  .layout{max-width:1080px; margin:0 auto; display:grid; grid-template-columns:220px minmax(0,1fr); gap:28px; align-items:start;}
+  .layout .page{margin:0;}
+  nav.series{position:sticky; top:24px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);}
+  nav.series .t{font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 10px;}
+  nav.series ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px;}
+  nav.series li a, nav.series li span{display:flex; justify-content:space-between; gap:8px; padding:7px 10px; border-radius:8px; font-size:14.5px; text-decoration:none; color:var(--ink);}
+  nav.series li a:hover{background:var(--mono-bg);}
+  nav.series li a[aria-current="page"]{background:var(--accent2-soft); color:var(--accent2); font-weight:600;}
+  nav.series li span{color:var(--muted);}
+  nav.series small{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); align-self:center;}
+  nav.series .home{display:block; margin-top:12px; font-size:13.5px;}
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} nav.series{position:static;} }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="series" aria-label="Brickwork series">
+  <p class="t">Brickwork circuit</p>
+  <ol>
+    <li><a href="brickwork-step.html">0 · One Trotter step <small>overview</small></a></li>
+    <li><a href="pair-gate.html">1 · Pair gate <small>hop</small></a></li>
+    <li><a href="swap.html">2 · SWAP <small>move</small></a></li>
+    <li><a href="electric-gate.html">3 · Electric gate <small>phase</small></a></li>
+    <li><a href="mass-term.html" aria-current="page">4 · Mass term <small>phase</small></a></li>
+  </ol>
+  <a class="home" href="index.html">← Learn index</a>
+</nav>
+<div class="page">
+
+<header>
+  <p class="eyebrow">Learn · hadron circuit · brickwork, part 4</p>
+  <h1>The Mass Term: one-qubit phases</h1>
+  <p class="sub">The dashed Rz turns at the end of each Trotter step.</p>
+</header>
+
+<section class="panel">
+  <h2>1. The gate</h2>
+  <div class="fig"><img src="mass-brick.png" alt="Electric gate on q0, q1 followed by the mass Rz turns (dashed boxes)"></div>
+  <p class="cap">The dashed Rz boxes at the end of the step are the mass term: one-qubit turns, no CNOTs.</p>
+  <p>Each qubit gets <span class="m">Rz(±0.03)</span> (mass 0.03). Like the electric gate it only adds phases: <span class="m">Rz(m)|0⟩ = e<sup>−im/2</sup>|0⟩</span>, <span class="m">Rz(m)|1⟩ = e<sup>+im/2</sup>|1⟩</span>.</p>
+</section>
+
+<section class="panel">
+  <h2>2. The sign pattern: per qubit or per site</h2>
+  <div class="scroll">
+  <table class="t">
+    <tr><th></th><th>q0</th><th>q1</th><th>q2</th><th>q3</th><th>q4</th><th>q5</th><th>…</th></tr>
+    <tr><td>earlier circuit (this picture)</td><td class="s">−</td><td class="s">+</td><td class="s">−</td><td class="s">+</td><td class="s">−</td><td class="s">+</td><td>per qubit</td></tr>
+    <tr class="hi"><td>newer circuit files</td><td class="s">−</td><td class="s">−</td><td class="s">+</td><td class="s">+</td><td class="s">−</td><td class="s">−</td><td>per site</td></tr>
+  </table>
+  </div>
+  <p>In code: <span class="m">q % 2</span> (earlier) vs <span class="m">(q // 2) % 2</span> (newer). The physics wants both qubits of a site to get the same sign, alternating from site to site (quarks on even sites, antiquarks on odd sites).</p>
+</section>
+
+<section class="panel">
+  <h2>3. What it means</h2>
+  <ul>
+    <li><strong>Mass = energy cost of a particle on a site.</strong> Configurations with more particles turn their phase differently, so at the next pair gates, hops that create particles add up less: pair creation is suppressed.</li>
+    <li><strong>Why the sign pattern matters:</strong> with the per-qubit pattern the mass phase did not depend on where the particles are (as the group pointed out), so it had no effect — we saw mass 0, 0.03 and 0.3 give nearly identical results. With the per-site pattern the phase depends on the configuration, and the mass changes the dynamics.</li>
+  </ul>
+  <div class="key">Same lesson as the <a href="electric-gate.html">electric gate</a>: a phase-only gate does nothing on its own, but sets the energy of each configuration — and that decides which hops add up over many steps.</div>
+</section>
+
+</div>
+</div>
+</body>
+</html>
