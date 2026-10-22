@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status 22.10.2026</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570;
+    --border:#D3D9D7; --accent:#B5702A; --accent-soft:#F3E3CF;
+    --accent2:#2F7A72; --accent2-soft:#DCEEEB; --mono-bg:#F5F3EE;
+    --shadow:0 1px 2px rgba(20,24,29,.06), 0 8px 24px rgba(20,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+      --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+      --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+    --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+    --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 90px; line-height:1.6;}
+  a{color:var(--accent2);}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px;}
+  h1{font-size:clamp(26px,4vw,34px); margin:0 0 8px; font-weight:700; line-height:1.2;}
+  .sub{color:var(--muted); font-size:15.5px; max-width:68ch; margin:0;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;}
+  .panel h2{margin:0; font-size:20px;}
+  .panel p, .panel li{font-size:15px; max-width:72ch; margin:0;}
+  .panel ul{margin:0; padding-left:22px; display:flex; flex-direction:column; gap:6px;}
+  code{font-family:'IBM Plex Mono',monospace; font-size:.92em; background:var(--mono-bg); padding:1px 5px; border-radius:4px;}
+  .scroll{overflow-x:auto; max-width:100%;}
+  table.t{border-collapse:collapse; font-size:14.5px; font-variant-numeric:tabular-nums;}
+  table.t th, table.t td{border:1px solid var(--border); padding:7px 11px; text-align:left; vertical-align:top;}
+  table.t th{background:var(--mono-bg); font-weight:600;}
+  table.t td.n{font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
+  table.t tr.hi td{background:var(--accent2-soft);}
+  .key{border-left:3px solid var(--accent2); background:var(--accent2-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:74ch;}
+  .warn{border-left:3px solid var(--accent); background:var(--accent-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:74ch;}
+  /* status navigation */
+  .layout{max-width:1080px; margin:0 auto; display:grid; grid-template-columns:200px minmax(0,1fr); gap:28px; align-items:start;}
+  .page{display:flex; flex-direction:column; gap:24px; min-width:0;}
+  nav.series{position:sticky; top:24px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);}
+  nav.series .t{font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 10px;}
+  nav.series ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px;}
+  nav.series li a{display:block; padding:7px 10px; border-radius:8px; font-size:14.5px; text-decoration:none; color:var(--ink); font-family:'IBM Plex Mono',monospace;}
+  nav.series li a:hover{background:var(--mono-bg);}
+  nav.series li a[aria-current="page"]{background:var(--accent2-soft); color:var(--accent2); font-weight:600;}
+  nav.series .home{display:block; margin-top:12px; font-size:13.5px;}
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} nav.series{position:static;} }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="series" aria-label="Status updates">
+  <p class="t">Status updates</p>
+  <ol>
+    <li><a href="status-2026-10-22.html" aria-current="page">22.10.2026</a></li>
+    <li><a href="hadron-aqc-status.html">16.10.2026</a></li>
+  </ol>
+  <a class="home" href="status.html">All statuses</a>
+  <a class="home" href="index.html">← Learn index</a>
+</nav>
+<div class="page">
+
+<header>
+  <p class="eyebrow">Hadron circuit compression · status · 22.10.2026</p>
+  <h1>New circuit: 12 qubits done, 32 qubits running</h1>
+  <p class="sub">We moved to the group's current circuit files. Since the last meeting (<a href="hadron-aqc-status.html">16.10.2026</a>): what changed and where we are.</p>
+</header>
+
+<section class="panel">
+  <h2>1. What changed in the circuit</h2>
+  <div class="scroll">
+  <table class="t">
+    <tr><th></th><th>before</th><th>now</th></tr>
+    <tr><td>kinetic strength (pair gate)</td><td class="n">0.15</td><td class="n">0.30</td></tr>
+    <tr><td>electric strength</td><td class="n">−0.01</td><td class="n">−0.226125</td></tr>
+    <tr><td>mass signs (mass 0.03)</td><td>per qubit: − + − + …</td><td>per site: − − + + …</td></tr>
+    <tr><td>hadron start</td><td>2 flipped qubits in the middle</td><td>4: both qubits of the two centre sites</td></tr>
+    <tr><td>target (full circuit)</td><td>20 Trotter steps</td><td>T11 file: 11 steps</td></tr>
+    <tr><td>start for training (cheap circuit)</td><td>4 steps</td><td>5 steps</td></tr>
+  </table>
+  </div>
+  <p>Our code now builds exactly the group's files: the circuit from <code>construct_circuit</code> matches all 22 QASM files (T1–T11, vacuum and meson) gate for gate.</p>
+  <p>Why the mass sign matters: with per-qubit signs, every term got the same phase, so the mass did nothing. With per-site signs, the phase depends on where the particles are. See <a href="mass-term.html">Mass term</a>.</p>
+</section>
+
+<section class="panel">
+  <h2>2. Where we are</h2>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>qubits</th><th>state</th><th>CNOTs</th><th>two-qubit depth</th><th>fidelity</th><th>angles</th><th>time</th></tr>
+    <tr class="hi"><td>12</td><td>vacuum</td><td class="n">673 → 347</td><td class="n">162 → 82</td><td class="n">0.9957</td><td class="n">1,167</td><td class="n">0.4 min</td></tr>
+    <tr class="hi"><td>12</td><td>meson</td><td class="n">673 → 351</td><td class="n">162 → 82</td><td class="n">0.9964</td><td class="n">1,167</td><td class="n">0.5 min</td></tr>
+    <tr><td>32</td><td>vacuum, meson</td><td colspan="5">running on the Mac since 10:07 (see below)</td></tr>
+    <tr><td>40, 120</td><td>both</td><td colspan="5">not started</td></tr>
+  </table>
+  </div>
+  <div class="warn"><strong>The new circuit is harder to compress.</strong> 12 qubits: 1.9× fewer CNOTs at 0.996. The old circuit gave 4.4× at 0.9999. Stronger hopping and a stronger field build more entanglement, so the 5-step start has more to catch up.</div>
+  <p><strong>32-qubit run so far</strong> (target bond 1024, jax with the cotengra planner):</p>
+  <ul>
+    <li>✅ vacuum target built in 5.7 min; count of filled seats 16 (correct); 1.6% of the norm lost to the bond-1024 cut</li>
+    <li>✅ cheap 5-step circuit: 3,412 angles, fidelity 0.29 before training</li>
+    <li>⬜ training (vacuum, then meson): about 1–2 h</li>
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>3. Next steps</h2>
+  <ul>
+    <li>⬜ Finish 32 qubits; compare compression and fidelity with 12 qubits.</li>
+    <li>⬜ 40 qubits on the Mac, then 120 qubits on the cluster (longer planner time).</li>
+    <li>⬜ If fidelity falls short: a 6- or 7-step start (more CNOTs, better fidelity).</li>
+    <li>⬜ Open question: the T11 file has 11 steps; is that the "10 Trotter steps"?</li>
+  </ul>
+  <div class="key">Setup now: script <code>scripts/run_hadron_aqc.py</code>, target T11 (11 steps), 5-step start, jax gradient with the cotengra planner during training.</div>
+</section>
+
+</div>
+</div>
+</body>
+</html>

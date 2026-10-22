@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status Updates</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{ --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570; --border:#D3D9D7; --accent2:#2F7A72; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB; --border:#2B333D; --accent2:#7FC0B8; }
+  }
+  :root[data-theme="dark"]{ --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB; --border:#2B333D; --accent2:#7FC0B8; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 80px; line-height:1.6;}
+  .page{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:18px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0;}
+  h1{margin:0; font-size:30px;}
+  a{color:var(--accent2);}
+  a.card{display:block; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; color:var(--ink); text-decoration:none;}
+  a.card:hover, a.card:focus-visible{border-color:var(--accent2);}
+  a.card h2{margin:0 0 4px; font-size:18px; color:var(--accent2);}
+  a.card p{margin:0; color:var(--muted); font-size:15px;}
+  .n{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Hadron circuit compression · status</p>
+  <h1>Status Updates</h1>
+  <p style="margin:0;color:var(--muted)">Newest first. <a href="index.html">← Learn index</a></p>
+
+  <a class="card" href="status-2026-10-22.html">
+    <span class="n">22.10.2026 · latest</span>
+    <h2>New circuit: 12 qubits done, 32 qubits running</h2>
+    <p>Moved to the group's current circuit files (stronger hopping and field, per-site mass signs, 4-qubit hadron start, 11-step target, 5-step start). 12 qubits: 673 → 347 CNOTs at 0.996.</p>
+  </a>
+
+  <a class="card" href="hadron-aqc-status.html">
+    <span class="n">16.10.2026</span>
+    <h2>Compressing the 120-qubit hadron circuit</h2>
+    <p>Old circuit, 20 steps. The RAM fix (cotengra planner), summary table from 12 to 120 qubits, how the method works, glossary.</p>
+  </a>
+</div>
+</body>
+</html>

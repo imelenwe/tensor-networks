@@ -85,13 +85,13 @@
 <header>
   <p class="eyebrow">Learn · hadron circuit · brickwork, part 0</p>
   <h1>One Trotter step: the brickwork</h1>
-  <p class="sub">Map of the whole step before the gate-by-gate pages. 12 qubits.</p>
+  <p class="sub">Map of the whole step before the gate-by-gate pages. 12 qubits, current circuit: kinetic 0.30, electric −0.226125, mass 0.03 (sign per site).</p>
 </header>
 
 <section class="panel">
   <h2>1. The whole step</h2>
   <div class="fig"><img src="brickwork-full.png" alt="One Trotter step of the 12-qubit hadron circuit, bricks numbered and coloured by kind"></div>
-  <p class="cap">One Trotter step, 6 sites = 12 qubits, mass signs corrected (per site). Drawn by <code>hadron-aqc/notebooks/draw_brickwork.py</code> straight from <code>construct_circuit</code>; the earlier picture is <code>brickwork_annotated_old.png</code>. The full circuit repeats this step 20 times.</p>
+  <p class="cap">One Trotter step, 6 sites = 12 qubits, current values, vacuum start (the hadron start flips 4 different qubits in the middle). Drawn by <code>hadron-aqc/notebooks/draw_brickwork.py</code> straight from <code>construct_circuit</code>; the earlier picture is <code>brickwork_annotated_old.png</code>. The full circuit (the T11 file) repeats this step 11 times.</p>
   <p><strong>Order, left to right:</strong> starting X flips → pair gates (bricks 1–6) → SWAPs (7–11) → pair gates (12–15) → SWAPs (16–17) → electric gates (18–23) → mass Rz turns.</p>
 </section>
 
@@ -100,7 +100,7 @@
   <div class="scroll">
   <table class="t">
     <tr><th>gate</th><th>bricks</th><th>CNOTs each</th><th>changes bits?</th><th>what it does</th></tr>
-    <tr><td><a href="pair-gate.html">pair gate</a></td><td>1–6, 12–15</td><td>4</td><td><strong>yes</strong></td><td>a particle hops between neighbours (kinetic strength 0.15)</td></tr>
+    <tr><td><a href="pair-gate.html">pair gate</a></td><td>1–6, 12–15</td><td>4</td><td><strong>yes</strong></td><td>a particle hops between neighbours (kinetic strength 0.30)</td></tr>
     <tr><td><a href="swap.html">SWAP</a></td><td>7–11, 16–17</td><td>3</td><td>only moves them</td><td>brings new neighbours together for the next pair gates; no physics</td></tr>
     <tr><td><a href="electric-gate.html">electric gate</a></td><td>18–23</td><td>2</td><td>no, phase only</td><td>energy of the electric field (the string) on one site</td></tr>
     <tr><td><a href="mass-term.html">mass Rz</a></td><td>— (one-qubit)</td><td>0</td><td>no, phase only</td><td>energy cost of a particle on a site</td></tr>
@@ -111,13 +111,16 @@
 </section>
 
 <section class="panel">
-  <h2>3. What changed in the newer circuit files</h2>
+  <h2>3. What changed from the earlier circuit</h2>
   <ul>
+    <li>Pair-gate Rz values: ±0.15 → <strong>±0.3</strong> (kinetic 0.15 → 0.30).</li>
     <li>Electric Rz values: ±0.005 → <strong>±0.113</strong> (field 22× stronger).</li>
     <li>Mass signs: per qubit (− + − + …) → <strong>per site</strong> (− − + + …). See <a href="mass-term.html">Mass term</a>.</li>
     <li>Hadron starting state: 2 flipped qubits in the middle → 4.</li>
+    <li>Number of steps: 20 → <strong>11</strong>.</li>
     <li>Bricks, order and qubit pairs: unchanged.</li>
   </ul>
+  <p>The worked examples on the <a href="pair-gate.html">pair gate</a> and <a href="electric-gate.html">electric gate</a> pages use the earlier angles (0.15 and 0.005). Same gates, only the angles differ.</p>
 </section>
 
 </div>
