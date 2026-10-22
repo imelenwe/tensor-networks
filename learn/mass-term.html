@@ -84,36 +84,72 @@
 
 <header>
   <p class="eyebrow">Learn · hadron circuit · brickwork, part 4</p>
-  <h1>The Mass Term: one-qubit phases</h1>
-  <p class="sub">The dashed Rz turns at the end of each Trotter step.</p>
+  <h1>The Mass Term: why the old signs did nothing</h1>
+  <p class="sub">The small Rz turns at the end of each Trotter step, read off the old diagram, then worked on the same 4-qubit state as the earlier pages. States are written |q0 q1 q2 q3⟩.</p>
 </header>
 
 <section class="panel">
-  <h2>1. The gate</h2>
-  <div class="fig"><img src="mass-brick.png" alt="Electric gate on q0, q1 followed by the mass Rz turns (dashed boxes)"></div>
-  <p class="cap">The dashed Rz boxes at the end of the step are the mass term: one-qubit turns, no CNOTs.</p>
-  <p>Each qubit gets <span class="m">Rz(±0.03)</span> (mass 0.03). Like the electric gate it only adds phases: <span class="m">Rz(m)|0⟩ = e<sup>−im/2</sup>|0⟩</span>, <span class="m">Rz(m)|1⟩ = e<sup>+im/2</sup>|1⟩</span>.</p>
+  <h2>1. Where the mass term is (old circuit)</h2>
+  <div class="fig"><img src="mass-old-full.png" alt="Old brickwork diagram with the 12 mass Rz gates outlined in red"></div>
+  <p class="cap">Old circuit (<code>brickwork_annotated.png</code>). Outlined in red: the 12 mass Rz gates, one per qubit — easy to miss because each pair sits right after its electric gate.</p>
+  <p>Every qubit gets one <span class="m">Rz(±0.03)</span> (mass 0.03). They come in the same pairs as the electric gates — <strong>each pair is one site</strong>: (q0,q1), (q2,q3), … (q10,q11). Like the electric gate, they only add phases: <span class="m">Rz(+m)</span> gives a 1 the phase e<sup>+im/2</sup> and a 0 the phase e<sup>−im/2</sup>; <span class="m">Rz(−m)</span> the opposite.</p>
 </section>
 
 <section class="panel">
-  <h2>2. The sign pattern: per qubit or per site</h2>
+  <h2>2. The mistake: signs per qubit instead of per site</h2>
   <div class="scroll">
   <table class="t">
-    <tr><th></th><th>q0</th><th>q1</th><th>q2</th><th>q3</th><th>q4</th><th>q5</th><th>…</th></tr>
-    <tr><td>earlier circuit (this picture)</td><td class="s">−</td><td class="s">+</td><td class="s">−</td><td class="s">+</td><td class="s">−</td><td class="s">+</td><td>per qubit</td></tr>
-    <tr class="hi"><td>newer circuit files</td><td class="s">−</td><td class="s">−</td><td class="s">+</td><td class="s">+</td><td class="s">−</td><td class="s">−</td><td>per site</td></tr>
+    <tr><th>site</th><th>qubits</th><th>old diagram (wrong)</th><th>correct (newer files)</th></tr>
+    <tr><td>0</td><td class="s">q0, q1</td><td class="s">−, +</td><td class="s"><b>−, −</b></td></tr>
+    <tr><td>1</td><td class="s">q2, q3</td><td class="s">−, +</td><td class="s"><b>+, +</b></td></tr>
+    <tr><td>2</td><td class="s">q4, q5</td><td class="s">−, +</td><td class="s"><b>−, −</b></td></tr>
+    <tr><td>3</td><td class="s">q6, q7</td><td class="s">−, +</td><td class="s"><b>+, +</b></td></tr>
+    <tr><td>4</td><td class="s">q8, q9</td><td class="s">−, +</td><td class="s"><b>−, −</b></td></tr>
+    <tr><td>5</td><td class="s">q10, q11</td><td class="s">−, +</td><td class="s"><b>+, +</b></td></tr>
   </table>
   </div>
-  <p>In code: <span class="m">q % 2</span> (earlier) vs <span class="m">(q // 2) % 2</span> (newer). The physics wants both qubits of a site to get the same sign, alternating from site to site (quarks on even sites, antiquarks on odd sites).</p>
+  <p>Old: the sign flips <strong>every qubit</strong> — inside every site the two qubits get opposite signs, and every site looks the same. Correct: <strong>both qubits of a site share a sign, and the sign flips from site to site</strong>. In code: <span class="m">q % 2</span> → <span class="m">(q // 2) % 2</span>. To fix the diagram, flip the signs on q1, q2, q5, q6, q9, q10.</p>
 </section>
 
 <section class="panel">
-  <h2>3. What it means</h2>
+  <h2>3. Worked on our 4-qubit state</h2>
+  <p>The state after the electric gate (electric phases left out — they don't affect this point). (q0,q1) is one site, (q2,q3) the next:</p>
+<pre>cos²θ |0011⟩ − i sinθ cosθ |0110⟩ − i sinθ cosθ |1001⟩ − sin²θ |1100⟩</pre>
+  <p><strong>The rule for one qubit.</strong> Rz never changes a bit, it only multiplies by a phase — and the phase depends on the bit and on the sign of the turn:</p>
+<pre>Rz(+m) |0⟩ = e^(−im/2) |0⟩        Rz(+m) |1⟩ = e^(+im/2) |1⟩
+Rz(−m) |0⟩ = e^(+im/2) |0⟩        Rz(−m) |1⟩ = e^(−im/2) |1⟩</pre>
+  <p><strong>The rule for a whole term.</strong> Each qubit gets its own Rz, so a term's phase is the <em>product</em> of its four qubits' phases. Example, old signs (−, +, −, +) on |0011⟩:</p>
+<pre>q0 = 0 under Rz(−m) → e^(+im/2)
+q1 = 0 under Rz(+m) → e^(−im/2)
+q2 = 1 under Rz(−m) → e^(−im/2)
+q3 = 1 under Rz(+m) → e^(+im/2)
+product                → e^(0) = 1</pre>
+  <p>Same rule, new signs (−, −, +, +) on |0011⟩: e<sup>+im/2</sup> · e<sup>+im/2</sup> · e<sup>+im/2</sup> · e<sup>+im/2</sup> = <strong>e<sup>+2im</sup></strong>.</p>
+  <p>Doing this for all four terms:</p>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>term</th><th>where the 1s are</th><th>old signs (−, +, −, +)</th><th>new signs (−, −, +, +)</th></tr>
+    <tr><td class="s">|0011⟩</td><td>both on site (q2 q3)</td><td class="s">1</td><td class="s"><b>e<sup>+2im</sup></b></td></tr>
+    <tr><td class="s">|0110⟩</td><td>one on each site</td><td class="s">1</td><td class="s">1</td></tr>
+    <tr><td class="s">|1001⟩</td><td>one on each site</td><td class="s">1</td><td class="s">1</td></tr>
+    <tr><td class="s">|1100⟩</td><td>both on site (q0 q1)</td><td class="s">1</td><td class="s"><b>e<sup>−2im</sup></b></td></tr>
+  </table>
+  </div>
+  <p class="cap">Checked by computer.</p>
   <ul>
-    <li><strong>Mass = energy cost of a particle on a site.</strong> Configurations with more particles turn their phase differently, so at the next pair gates, hops that create particles add up less: pair creation is suppressed.</li>
-    <li><strong>Why the sign pattern matters:</strong> with the per-qubit pattern the mass phase did not depend on where the particles are (as the group pointed out), so it had no effect — we saw mass 0, 0.03 and 0.3 give nearly identical results. With the per-site pattern the phase depends on the configuration, and the mass changes the dynamics.</li>
+    <li><strong>Old signs:</strong> every term gets <em>exactly the same</em> phase. Inside each site the two Rz turns are opposite, so they cancel for every term — <strong>the mass term does nothing at all</strong>. That is why changing the mass (0, 0.03, 0.3) changed nothing in our old results.</li>
+    <li><strong>New signs:</strong> the phase <strong>depends on which site the 1s sit on</strong>. 1s on the "−" site get one phase, 1s on the "+" site the opposite, one on each and they cancel. The terms now carry different phases.</li>
   </ul>
-  <div class="key">Same lesson as the <a href="electric-gate.html">electric gate</a>: a phase-only gate does nothing on its own, but sets the energy of each configuration — and that decides which hops add up over many steps.</div>
+  <div class="key"><strong>Why that matters.</strong> At the next Trotter step the pair gate mixes these terms — that is the hop. Terms with different phases no longer add up in step, so <em>how the 1s move from step to step changes</em>. In plain words: with the corrected signs, a 1 sitting on a "−" site behaves differently from a 1 on a "+" site — being on one kind of site costs a different energy, and that steers where the particles go. That is what "the mass term now matters" means — and why the old setup's mass term was useless.</div>
+</section>
+
+<section class="panel">
+  <h2>Key points</h2>
+  <ul>
+    <li>Mass term = one Rz(±0.03) per qubit at the end of each step, in site pairs; phase only, no CNOTs.</li>
+    <li>Old circuit: signs alternate per qubit → opposite inside each site → every term gets the same phase → no effect.</li>
+    <li>Corrected: same sign inside a site, alternating site to site → phase depends on where the particles are → changes the hopping at the next step.</li>
+  </ul>
 </section>
 
 </div>
