@@ -70,8 +70,10 @@ keep_gates_as_blocks=False, # True: pair/electric gates go in as one named block
                 qc.x(i + j*n_sites) # So it flips pairs (1,7), (3,9), (5,11) 
             i+=2 # jump the pairs.
         if use_meson_not_vacuum:
-            center = [num_qubits //2 -1, num_qubits // 2]
-            qc.x(center) ## flip center two qubits to inject one meson excitation -> Physical: we want to watch a single quark–antiquark pair born at one spot and see how it spreads over time. Placing it at the center gives it equal room to travel left or right — the evolution comes out symmetric, which makes the heatmap readable. Placing it near an edge would make it bump into the boundary almost immediately.
+            # hadron at the centre: flip BOTH qubits of the two centre sites (as in the group's MID circuit files).
+            # At the start of the circuit, site s sits on qubits (2s, 2s+2) if s is even and (2s-1, 2s+1) if s is odd.
+            for site in [n_sites // 2 - 1, n_sites // 2]:
+                qc.x([2 * site, 2 * site + 2] if site % 2 == 0 else [2 * site - 1, 2 * site + 1])   # centre: equal room to spread left and right
     else:
         # caller handles state just do swapping
         i=1
@@ -319,8 +321,8 @@ from qiskit_addon_aqc_tensor.objective import MaximizeStateFidelity
 
 # ---- Settings: every number below that affects results, in one place ----
 # physics: the tutorial's strengths, applied once per Trotter step
-KINETIC_STRENGTH = 0.15          # pair gates: how easily particles hop (and quark-antiquark pairs are created)
-ELECTRIC_FIELD_STRENGTH = -0.01  # electric gates: energy cost of the string between quark and antiquark (sign as in the tracker's official circuit files; the tutorial code used +0.01)
+KINETIC_STRENGTH = 0.30          # pair gates: how easily particles hop (and quark-antiquark pairs are created); the group's current circuit files (x = 200; was 0.15)
+ELECTRIC_FIELD_STRENGTH = -0.226125  # electric gates: energy cost of the string between quark and antiquark (background flux 300, as in tracker issue #254 and the group's current files; was -0.01)
 MASS = 0.03                      # Rz turns at the end of each step: quark mass
 # simulation
 TARGET_SVD_CUTOFF = 1e-10        # building targets: quimb's default (drops near-zero numbers; 2x faster than 0, same accuracy)

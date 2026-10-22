@@ -11,13 +11,13 @@ matplotlib.use("Agg")
 from matplotlib.patches import Polygon, Rectangle, Patch
 
 sys.path.insert(0, "..")
-from hadron_aqc_utils import construct_circuit
+from hadron_aqc_utils import construct_circuit, KINETIC_STRENGTH, ELECTRIC_FIELD_STRENGTH, MASS
 
 COLOURS = {"pair": "#E8590C", "swap": "#2B8A3E", "electric": "#7048E8", "one": "#868E96"}
 HALF_WIDTH, HALF_HEIGHT = 0.45, 0.42      # half a gate column, and the margin above/below a wire
 
 
-def draw(file_name, n_sites=6, kinetic=0.15, electric=0.01, mass=0.03, highlight_mass=False):
+def draw(file_name, n_sites=6, kinetic=KINETIC_STRENGTH, electric=ELECTRIC_FIELD_STRENGTH, mass=MASS, highlight_mass=False):
     circuit = construct_circuit(n_sites, 1, kinetic, electric, mass)
     figure = circuit.draw("mpl", fold=-1)
     axes = figure.axes[0]
@@ -79,4 +79,3 @@ def draw(file_name, n_sites=6, kinetic=0.15, electric=0.01, mass=0.03, highlight
 
 if __name__ == "__main__":
     draw("brickwork_annotated.png")
-    draw("../../learn/mass-new-full.png", highlight_mass=True)   # for the learn page on the mass term
