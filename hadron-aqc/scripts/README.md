@@ -73,7 +73,7 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 20 --coarse-steps 4 --target
 | `--planner-minutes` | jax only: let cotengra plan the order of the big training contraction for this many minutes (5 up to ~40 qubits, ~30 at 120). Same results, far less memory and time; the plan is saved in `contraction_plans/` and reused by `--resume`. Default: off |
 | `--resume` | continue a killed run (see below) |
 
-Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric −0.01, mass 0.03 per Trotter step. With these, the circuit is instruction-for-instruction the tracker's official `x_100_meson.qasm` / `x_100_SCV.qasm` (60 sites, 20 steps).
+Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.15, electric −0.01, mass 0.03 per Trotter step. The mass sign is **per site** (both qubits of a site share it, alternating site to site), as in the newer official files (tracker issue #254); a corrected version of those files is expected. With `construct_circuit(..., mass_per_site=False)` the circuit is instruction-for-instruction the older official `x_100_meson.qasm` / `x_100_SCV.qasm`, whose per-qubit mass signs make the mass term have no effect. Results saved before this change use the old signs.
 
 ## Which gradient?
 

@@ -91,7 +91,7 @@
 <section class="panel">
   <h2>1. Where the mass term is (old circuit)</h2>
   <div class="fig"><img src="mass-old-full.png" alt="Old brickwork diagram with the 12 mass Rz gates outlined in red"></div>
-  <p class="cap">Old circuit (<code>brickwork_annotated.png</code>). Outlined in red: the 12 mass Rz gates, one per qubit — easy to miss because each pair sits right after its electric gate.</p>
+  <p class="cap">Old circuit (<code>brickwork_annotated_old.png</code>). Outlined in red: the 12 mass Rz gates, one per qubit — easy to miss because each pair sits right after its electric gate.</p>
   <p>Every qubit gets one <span class="m">Rz(±0.03)</span> (mass 0.03). They come in the same pairs as the electric gates — <strong>each pair is one site</strong>: (q0,q1), (q2,q3), … (q10,q11). Like the electric gate, they only add phases: <span class="m">Rz(+m)</span> gives a 1 the phase e<sup>+im/2</sup> and a 0 the phase e<sup>−im/2</sup>; <span class="m">Rz(−m)</span> the opposite.</p>
 </section>
 
@@ -108,6 +108,8 @@
     <tr><td>5</td><td class="s">q10, q11</td><td class="s">−, +</td><td class="s"><b>+, +</b></td></tr>
   </table>
   </div>
+  <div class="fig"><img src="mass-new-full.png" alt="Corrected brickwork diagram with the 12 mass Rz gates outlined in red: same sign inside each site, alternating site to site"></div>
+  <p class="cap">Corrected circuit (<code>brickwork_annotated.png</code>, drawn by <code>draw_brickwork.py</code>): q0, q1 −0.03; q2, q3 +0.03; q4, q5 −0.03; … Everything else is unchanged.</p>
   <p>Old: the sign flips <strong>every qubit</strong> — inside every site the two qubits get opposite signs, and every site looks the same. Correct: <strong>both qubits of a site share a sign, and the sign flips from site to site</strong>. In code: <span class="m">q % 2</span> → <span class="m">(q // 2) % 2</span>. To fix the diagram, flip the signs on q1, q2, q5, q6, q9, q10.</p>
 </section>
 

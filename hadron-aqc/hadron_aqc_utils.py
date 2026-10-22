@@ -57,6 +57,7 @@ add_measurements = False,
 prep_init_state=True,
 use_meson_not_vacuum=False,
 keep_gates_as_blocks=False, # True: pair/electric gates go in as one named block each (wrap=True), so their positions can be read back
+mass_per_site=True, # True: both qubits of a site get the same mass sign, alternating site by site (- - + + ...), as in the newer official files; False: old tutorial pattern, sign alternates every qubit (- + - + ...) and the mass has no effect
 ):
     num_qubits = qubits_per_site * n_sites
     qc = QuantumCircuit(num_qubits)
@@ -125,12 +126,13 @@ keep_gates_as_blocks=False, # True: pair/electric gates go in as one named block
             for j in range(n_sites):
                 qc.compose(electric_circ, [2*j, 2*j+1], inplace=True, wrap=keep_gates_as_blocks) # place the gate on qubits (0,1), (2,3), (4,5), (6,7), (8,9), (10,11)
 
-        # 7. Mass term — alternating Z-rotations on every qubit (staggered fermion sign)
+        # 7. Mass term — Z-rotations on every qubit; qubits (2j, 2j+1) are site j at this point
         for q in range(num_qubits):
-            if q % 2 == 0:
-                qc.rz(-1 * mass, q)     # even qubits rotate by -m
+            negative = (q // 2) % 2 == 0 if mass_per_site else q % 2 == 0   # per site: sites 0, 2, 4 ... get -m on both qubits
+            if negative:
+                qc.rz(-1 * mass, q)
             else:
-                qc.rz(mass, q)          # odd qubits rotate by +m
+                qc.rz(mass, q)
 
         # measurements
     if add_measurements:
