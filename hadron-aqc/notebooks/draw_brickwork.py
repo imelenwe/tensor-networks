@@ -1,7 +1,7 @@
 """Draw one Trotter step of the 12-qubit hadron circuit with the bricks outlined and numbered.
 
 Run from this folder:  python draw_brickwork.py
-Writes brickwork_annotated.png (mass sign per site, the corrected circuit).
+Writes brickwork_annotated.png (mass sign per site: - - + + ...).
 The circuit comes straight from construct_circuit in hadron_aqc_utils.py; Qiskit draws qubit q at
 height -q and gate column c at x = c, so the boxes below are placed in those units.
 """
@@ -17,8 +17,8 @@ COLOURS = {"pair": "#E8590C", "swap": "#2B8A3E", "electric": "#7048E8", "one": "
 HALF_WIDTH, HALF_HEIGHT = 0.45, 0.42      # half a gate column, and the margin above/below a wire
 
 
-def draw(file_name, mass_per_site=True, n_sites=6, kinetic=0.15, electric=0.01, mass=0.03, highlight_mass=False):
-    circuit = construct_circuit(n_sites, 1, kinetic, electric, mass, mass_per_site=mass_per_site)
+def draw(file_name, n_sites=6, kinetic=0.15, electric=0.01, mass=0.03, highlight_mass=False):
+    circuit = construct_circuit(n_sites, 1, kinetic, electric, mass)
     figure = circuit.draw("mpl", fold=-1)
     axes = figure.axes[0]
 
@@ -78,5 +78,5 @@ def draw(file_name, mass_per_site=True, n_sites=6, kinetic=0.15, electric=0.01, 
 
 
 if __name__ == "__main__":
-    draw("brickwork_annotated.png", mass_per_site=True)
-    draw("../../learn/mass-new-full.png", mass_per_site=True, highlight_mass=True)   # for the learn page on the mass term
+    draw("brickwork_annotated.png")
+    draw("../../learn/mass-new-full.png", highlight_mass=True)   # for the learn page on the mass term
