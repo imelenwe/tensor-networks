@@ -74,16 +74,16 @@
 
 <header>
   <p class="eyebrow">Hadron circuit compression · status · 22.10.2026</p>
-  <h1>New circuit: 12 qubits done, 32 qubits running</h1>
-  <p class="sub">We moved to the group's current circuit files. Since the last meeting (<a href="hadron-aqc-status.html">16.10.2026</a>): what changed and where we are.</p>
+  <h1>x = 200 circuit: hard to compress; which circuit is right is being rechecked</h1>
+  <p class="sub">We moved to the group's latest circuit files and ran 12 and 32 qubits. Since the last meeting (<a href="hadron-aqc-status.html">16.10.2026</a>): what changed, results, and the open question about the circuit.</p>
 </header>
 
 <section class="panel">
   <h2>1. What changed in the circuit</h2>
   <div class="scroll">
   <table class="t">
-    <tr><th></th><th>before</th><th>now</th></tr>
-    <tr><td>kinetic strength (pair gate)</td><td class="n">0.15</td><td class="n">0.30</td></tr>
+    <tr><th></th><th>original tracker circuit</th><th>latest files</th></tr>
+    <tr><td>kinetic strength per step (pair gate)</td><td class="n">0.15 (x = 100)</td><td class="n">0.30 (x = 200)</td></tr>
     <tr><td>electric strength</td><td class="n">−0.01</td><td class="n">−0.226125</td></tr>
     <tr><td>mass signs (mass 0.03)</td><td>per qubit: − + − + …</td><td>per site: − − + + …</td></tr>
     <tr><td>hadron start</td><td>2 flipped qubits in the middle</td><td>4: both qubits of the two centre sites</td></tr>
@@ -91,37 +91,62 @@
     <tr><td>start for training (cheap circuit)</td><td>4 steps</td><td>5 steps</td></tr>
   </table>
   </div>
-  <p>Our code now builds exactly the group's files: the circuit from <code>construct_circuit</code> matches all 22 QASM files (T1–T11, vacuum and meson) gate for gate.</p>
-  <p>Why the mass sign matters: with per-qubit signs, every term got the same phase, so the mass did nothing. With per-site signs, the phase depends on where the particles are. See <a href="mass-term.html">Mass term</a>.</p>
+  <p>Our code builds the latest files exactly: <code>construct_circuit</code> matches all 22 QASM files (T1–T11, vacuum and meson) gate for gate.</p>
+  <p>Kinetic strength per step = x × dt with dt = 0.0015, so 0.30 means x = 200 and 0.15 means x = 100.</p>
+  <div class="warn"><strong>Open: which circuit is right?</strong> A new calculation in the group suggests the original tracker circuit (x = 100) was correct and the latest files are x = 200. This is being checked; decision expected within a day. Our x = 200 results below stay useful either way.</div>
 </section>
 
 <section class="panel">
-  <h2>2. Where we are</h2>
+  <h2>2. Results on the x = 200 circuit</h2>
   <div class="scroll">
   <table class="t">
-    <tr><th>qubits</th><th>state</th><th>CNOTs</th><th>two-qubit depth</th><th>fidelity</th><th>angles</th><th>time</th></tr>
-    <tr class="hi"><td>12</td><td>vacuum</td><td class="n">673 → 347</td><td class="n">162 → 82</td><td class="n">0.9957</td><td class="n">1,167</td><td class="n">0.4 min</td></tr>
-    <tr class="hi"><td>12</td><td>meson</td><td class="n">673 → 351</td><td class="n">162 → 82</td><td class="n">0.9964</td><td class="n">1,167</td><td class="n">0.5 min</td></tr>
-    <tr><td>32</td><td>vacuum, meson</td><td colspan="5">running on the Mac since 10:07 (see below)</td></tr>
-    <tr><td>40, 120</td><td>both</td><td colspan="5">not started</td></tr>
+    <tr><th>qubits</th><th>state</th><th>start</th><th>CNOTs</th><th>two-qubit depth</th><th>fidelity</th><th>time</th></tr>
+    <tr><td>12</td><td>vacuum</td><td>5 steps</td><td class="n">673 → 347</td><td class="n">162 → 82</td><td class="n">0.9957</td><td class="n">0.4 min</td></tr>
+    <tr><td>12</td><td>meson</td><td>5 steps</td><td class="n">673 → 351</td><td class="n">162 → 82</td><td class="n">0.9964</td><td class="n">0.5 min</td></tr>
+    <tr class="hi"><td>32</td><td>vacuum</td><td>5 steps</td><td class="n">1978 → 1025</td><td class="n">162 → 82</td><td class="n">0.901</td><td class="n">140 min</td></tr>
+    <tr class="hi"><td>32</td><td>meson</td><td>5 steps</td><td class="n">1978 → 1020</td><td class="n">162 → 82</td><td class="n">0.943</td><td class="n">135 min</td></tr>
+    <tr><td>32</td><td>meson</td><td>7 steps</td><td colspan="4">fidelity 0.775 <em>before</em> training (5 steps: 0.43); then stopped, most likely out of RAM on the 24 GB laptop</td><td></td></tr>
   </table>
   </div>
-  <div class="warn"><strong>The new circuit is harder to compress.</strong> 12 qubits: 1.9× fewer CNOTs at 0.996. The old circuit gave 4.4× at 0.9999. Stronger hopping and a stronger field build more entanglement, so the 5-step start has more to catch up.</div>
-  <p><strong>32-qubit run so far</strong> (target bond 1024, jax with the cotengra planner):</p>
   <ul>
-    <li>✅ vacuum target built in 5.7 min; count of filled seats 16 (correct); 1.6% of the norm lost to the bond-1024 cut</li>
-    <li>✅ cheap 5-step circuit: 3,412 angles, fidelity 0.29 before training</li>
-    <li>⬜ training (vacuum, then meson): about 1–2 h</li>
+    <li>Both 32-qubit runs <strong>levelled off</strong> well before the time limit: more training time does not help.</li>
+    <li>The poor starting point is the likely cause: 5 big steps copy 11 small ones badly (fidelity 0.29 / 0.43 before training). 7 steps start much closer.</li>
+    <li>A collaborator sees the same wall at 120 qubits: about 0.75 with a 5-step start on x = 200.</li>
+    <li>Fidelity check: training computes the fidelity exactly. Rechecks at bond 1024 read lower (0.86 vacuum, 0.94 meson) because the trained state needs a bond above 1024.</li>
   </ul>
 </section>
 
 <section class="panel">
-  <h2>3. Next steps</h2>
+  <h2>3. On the original x = 100 circuit (a collaborator's runs)</h2>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>120 qubits, 10 steps compressed to</th><th>CNOTs</th><th>two-qubit depth</th><th>fidelity</th></tr>
+    <tr><td>uncompressed</td><td class="n">~7000</td><td class="n">147</td><td class="n">1</td></tr>
+    <tr class="hi"><td>5 steps + 2-CNOT lock</td><td class="n">3548</td><td class="n">75</td><td class="n">0.990</td></tr>
+    <tr><td>4 steps + 2-CNOT lock</td><td class="n">2840</td><td class="n">60</td><td class="n">0.954</td></tr>
+  </table>
+  </div>
+  <p>So at x = 100 the method reaches 0.99 at 120 qubits. The x = 200 circuit hops twice as hard, builds much more entanglement, and probably needs about 7 steps.</p>
+</section>
+
+<section class="panel">
+  <h2>4. New idea from the group: the 2-CNOT lock</h2>
   <ul>
-    <li>⬜ Finish 32 qubits; compare compression and fidelity with 12 qubits.</li>
-    <li>⬜ 40 qubits on the Mac, then 120 qubits on the cluster (longer planner time).</li>
-    <li>⬜ If fidelity falls short: a 6- or 7-step start (more CNOTs, better fidelity).</li>
-    <li>⬜ Open question: the T11 file has 11 steps; is that the "10 Trotter steps"?</li>
+    <li>Every two-qubit block in IBM's trainable circuit is exp(i(a XX + b YY + c ZZ)) plus one-qubit turns: 3 angles, written with 3 CNOTs.</li>
+    <li>Pair-gate (hop) and electric blocks start with <strong>c = 0</strong>. Keep c locked at 0 during training and each needs only <strong>2 CNOTs</strong>.</li>
+    <li>Our 12-qubit circuit, 5-step start: 80 of 127 blocks can be locked (50 pair, 30 electric); the 47 SWAP blocks need all 3.</li>
+    <li>Saves about 14% of CNOTs and 12% of two-qubit depth at the same fidelity. Not in our script yet.</li>
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>5. Next steps</h2>
+  <ul>
+    <li>⬜ Wait for the decision: x = 100 or x = 200. No new long runs until then.</li>
+    <li>⬜ Add the 2-CNOT lock to our script; test at 12 qubits.</li>
+    <li>⬜ If x = 100: switch the strengths back, rerun 12 → 32 → 40 qubits.</li>
+    <li>⬜ If x = 200: 7-step start, on the cluster (too big for the laptop's RAM).</li>
+    <li>⬜ Ideas for a better starting point (no extra CNOTs): a symmetric (second-order) Trotter order for the cheap circuit; training in stages, each warm-started from the last.</li>
   </ul>
   <div class="key">Setup now: script <code>scripts/run_hadron_aqc.py</code>, target T11 (11 steps), 5-step start, jax gradient with the cotengra planner during training.</div>
 </section>

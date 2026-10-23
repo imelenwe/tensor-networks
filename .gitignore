@@ -229,3 +229,4 @@ hadron-aqc/results/targets_120qubits*/
 hadron-aqc/results/**/target_*.pkl
 hadron-aqc/results/**/contraction_plans/
 hadron-aqc/results/**/*.tmp
+.DS_Store
