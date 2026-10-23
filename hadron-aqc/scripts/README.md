@@ -39,8 +39,8 @@ python scripts/run_hadron_aqc.py --sites 6 --steps 11 --coarse-steps 5 --target-
 **2. 32 qubits (jax, 32-bit, cotengra planner).** Measured on a laptop (M4 Pro), 2026-10-22, 5-step start: target ~6 min, planning 5 min, ~2.5 min per training step (the first ~10–15 min), RAM ~3 GB. Both states level off within ~1.5 h: fidelity **0.901** (vacuum) and **0.943** (meson), CNOTs 1978 → ~1020, two-qubit depth 162 → 82.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 3 --planner-minutes 5 2>> stderr_32q_meson.log
-python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states vacuum --gradient jax --max-hours 3 --planner-minutes 5 2>> stderr_32q_vacuum.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 3 --planner-minutes 5 --zero-out-zz 2>> stderr_32q_meson.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states vacuum --gradient jax --max-hours 3 --planner-minutes 5 --zero-out-zz 2>> stderr_32q_vacuum.log
 ```
 
 **For a higher fidelity, start from more steps:** change `--coarse-steps 5` to `6` or `7` (more angles and CNOTs; ~7/5 × the time per step). Each choice gets its own results folder (`..._7cheap_...`). Not yet measured.
@@ -48,14 +48,14 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target
 **3. 120 qubits, 11 steps. Estimate, not yet run.** Measured on the earlier 20-step circuit at 24, 32, 40 qubits and extrapolated: peak memory ~50–55 GB (ask for 128 GB), planning ~30 min once, ~5 min per training step. Target: about 1 h; at bond 1024 it may lose ~1.5% (norm violation ~0.012–0.016). Without the planner it does not fit any machine.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 60 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 72 --planner-minutes 30 2>> stderr_120q_meson.log
-python scripts/run_hadron_aqc.py --sites 60 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states vacuum --gradient jax --max-hours 72 --planner-minutes 30 2>> stderr_120q_vacuum.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 72 --planner-minutes 30 --zero-out-zz 2>> stderr_120q_meson.log
+python scripts/run_hadron_aqc.py --sites 60 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states vacuum --gradient jax --max-hours 72 --planner-minutes 30 --zero-out-zz 2>> stderr_120q_vacuum.log
 ```
 
 `--max-hours 72` leaves room in a 4-day job for building the target and the final counting. If a job is killed anyway (time limit, crash, node failure), rerun the exact same line with `--resume` added before `2>>`, e.g.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 3 --planner-minutes 5 --resume 2>> stderr_32q_meson.log
+python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 3 --planner-minutes 5 --zero-out-zz --resume 2>> stderr_32q_meson.log
 ```
 
 **What to send back:** the `results/<run name>/` folder (without the large `target_*.pkl`) and the `stderr_*.log` file.
@@ -73,6 +73,7 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target
 | `--gradient` | `jax` or `explicit`: how training gets its slopes (see "Which gradient?") |
 | `--max-hours` | stop each state's training after this many hours, then finish it normally (counts, table). Needed with 64-bit numbers (explicit, or jax with `JAX_ENABLE_X64=True`): they rarely stop by themselves |
 | `--planner-minutes` | jax only: let cotengra plan the order of the big training contraction for this many minutes (5 up to ~40 qubits, ~30 at 120). Same results, far less memory and time; the plan is saved in `contraction_plans/` and reused by `--resume`. Default: off |
+| `--zero-out-zz` | keep the ZZ angle at 0 in every two-qubit block where it starts at 0 (pair and electric blocks): those compile to 2 CNOTs instead of 3. 12 qubits: CNOTs ~350 → 301, two-qubit depth 82 → 72, fidelity −0.001. The run folder gets `_zerozz`. |
 | `--resume` | continue a killed run (see below) |
 
 Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.30, electric −0.226125, mass 0.03 per Trotter step; mass sign per site (− − + + …); hadron start = both qubits of the two centre sites. With these, `construct_circuit(60, T, ...)` is gate-for-gate the group's current circuit files (`SU2_T{T}_SCV_200.qasm` / `SU2_T{T}_MID_200.qasm`, T = 1 … 11; checked 2026-10-22). The 12- and 32-qubit numbers above are on this circuit; the 120-qubit estimate and the gradient comparison below come from the earlier circuit (kinetic 0.15, electric −0.01, per-qubit mass, 20 steps).
@@ -130,7 +131,8 @@ import numpy as np
 from hadron_aqc_utils import build_cheap_trainable_circuit, snap_tiny_angles
 
 angles = np.load("results/<run name>/angles.npz")["meson"]
-ansatz, _ = build_cheap_trainable_circuit(n_sites, num_trotter_steps, num_coarse_steps, use_meson_not_vacuum=True)
+ansatz, _ = build_cheap_trainable_circuit(n_sites, num_trotter_steps, num_coarse_steps, use_meson_not_vacuum=True,
+                                         zero_out_zz=True)   # True for a run folder ending in _zerozz
 circuit = ansatz.assign_parameters(snap_tiny_angles(angles))
 ```
 

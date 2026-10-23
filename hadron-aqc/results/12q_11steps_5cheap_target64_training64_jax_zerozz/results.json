@@ -1,0 +1,59 @@
+{
+  "settings": {
+    "sites": 6,
+    "steps": 11,
+    "coarse_steps": 5,
+    "target_bond": 64,
+    "training_bond": 64,
+    "states": [
+      "vacuum",
+      "meson"
+    ],
+    "gradient": "jax",
+    "resume": false,
+    "max_hours": null,
+    "planner_minutes": null,
+    "zero_out_zz": true
+  },
+  "started": "2026-10-23 19:39",
+  "vacuum": {
+    "norm_violation": 0.0,
+    "count_of_filled_seats": 5.999999999999999,
+    "angles": 1087,
+    "fidelity_before": 0.813322989218318,
+    "fidelity_in_training": 0.9950372907333076,
+    "fidelity_after": 0.9950573880656358,
+    "fidelity_recheck": 0.9950573880656358,
+    "training_steps": 73,
+    "stopped": "converged",
+    "original_cnots": 673,
+    "original_two_qubit_depth": 162,
+    "original_total_depth": 383,
+    "cnots": 301,
+    "two_qubit_depth": 72,
+    "total_depth": 298,
+    "transpiled_fidelity": 0.995057405357095,
+    "qubit_order_unchanged": true,
+    "minutes": 0.23583848079045613
+  },
+  "meson": {
+    "norm_violation": 0.0,
+    "count_of_filled_seats": 6.0,
+    "angles": 1087,
+    "fidelity_before": 0.8829163365351954,
+    "fidelity_in_training": 0.9944347306154668,
+    "fidelity_after": 0.9944562050052361,
+    "fidelity_recheck": 0.9944562050052361,
+    "training_steps": 81,
+    "stopped": "converged",
+    "original_cnots": 673,
+    "original_two_qubit_depth": 162,
+    "original_total_depth": 383,
+    "cnots": 301,
+    "two_qubit_depth": 72,
+    "total_depth": 291,
+    "transpiled_fidelity": 0.9944562141893193,
+    "qubit_order_unchanged": true,
+    "minutes": 0.19901113510131835
+  }
+}

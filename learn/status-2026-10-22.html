@@ -122,33 +122,41 @@
   <table class="t">
     <tr><th>120 qubits, 10 steps compressed to</th><th>CNOTs</th><th>two-qubit depth</th><th>fidelity</th></tr>
     <tr><td>uncompressed</td><td class="n">~7000</td><td class="n">147</td><td class="n">1</td></tr>
-    <tr class="hi"><td>5 steps + 2-CNOT lock</td><td class="n">3548</td><td class="n">75</td><td class="n">0.990</td></tr>
-    <tr><td>4 steps + 2-CNOT lock</td><td class="n">2840</td><td class="n">60</td><td class="n">0.954</td></tr>
+    <tr class="hi"><td>5 steps + zeroing out ZZ</td><td class="n">3548</td><td class="n">75</td><td class="n">0.990</td></tr>
+    <tr><td>4 steps + zeroing out ZZ</td><td class="n">2840</td><td class="n">60</td><td class="n">0.954</td></tr>
   </table>
   </div>
   <p>So at x = 100 the method reaches 0.99 at 120 qubits. The x = 200 circuit hops twice as hard, builds much more entanglement, and probably needs about 7 steps.</p>
 </section>
 
 <section class="panel">
-  <h2>4. New idea from the group: the 2-CNOT lock</h2>
+  <h2>4. Zeroing out ZZ: done (update 23.10.2026)</h2>
   <ul>
     <li>Every two-qubit block in IBM's trainable circuit is exp(i(a XX + b YY + c ZZ)) plus one-qubit turns: 3 angles, written with 3 CNOTs.</li>
-    <li>Pair-gate (hop) and electric blocks start with <strong>c = 0</strong>. Keep c locked at 0 during training and each needs only <strong>2 CNOTs</strong>.</li>
-    <li>Our 12-qubit circuit, 5-step start: 80 of 127 blocks can be locked (50 pair, 30 electric); the 47 SWAP blocks need all 3.</li>
-    <li>Saves about 14% of CNOTs and 12% of two-qubit depth at the same fidelity. Not in our script yet.</li>
+    <li>Pair-gate (hop) and electric blocks start with <strong>c = 0</strong>. Keep c at 0 during training and each needs only <strong>2 CNOTs</strong>. At 12 qubits that is 80 of 127 blocks; the 47 SWAP blocks keep all 3.</li>
+    <li>Now in our script: <code>--zero-out-zz</code>.</li>
   </ul>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>12 qubits, x = 200, 11 steps</th><th>CNOTs</th><th>two-qubit depth</th><th>compression (CNOTs / depth)</th><th>fidelity vacuum / meson</th></tr>
+    <tr><td>full Trotter circuit</td><td class="n">673</td><td class="n">162</td><td class="n">1×</td><td class="n">1 / 1</td></tr>
+    <tr><td>trained, 5-step start</td><td class="n">347 / 351</td><td class="n">82</td><td class="n">1.9× / 2.0×</td><td class="n">0.9957 / 0.9964</td></tr>
+    <tr class="hi"><td>trained, 5-step start + zeroing out ZZ</td><td class="n">301 / 301</td><td class="n">72</td><td class="n"><strong>2.2× / 2.25×</strong></td><td class="n">0.9950 / 0.9944</td></tr>
+  </table>
+  </div>
+  <p>13–14% fewer CNOTs and 12% less depth for a fidelity cost of 0.001–0.002, matching the collaborator's report.</p>
 </section>
 
 <section class="panel">
   <h2>5. Next steps</h2>
   <ul>
     <li>⬜ Wait for the decision: x = 100 or x = 200. No new long runs until then.</li>
-    <li>⬜ Add the 2-CNOT lock to our script; test at 12 qubits.</li>
+    <li>✅ Zeroing out ZZ in our script; 12 qubits: 2.2× fewer CNOTs (was 1.9×).</li>
     <li>⬜ If x = 100: switch the strengths back, rerun 12 → 32 → 40 qubits.</li>
     <li>⬜ If x = 200: 7-step start, on the cluster (too big for the laptop's RAM).</li>
     <li>⬜ Ideas for a better starting point (no extra CNOTs): a symmetric (second-order) Trotter order for the cheap circuit; training in stages, each warm-started from the last.</li>
   </ul>
-  <div class="key">Setup now: script <code>scripts/run_hadron_aqc.py</code>, target T11 (11 steps), 5-step start, jax gradient with the cotengra planner during training.</div>
+  <div class="key">Setup now: script <code>scripts/run_hadron_aqc.py</code>, target T11 (11 steps), 5-step start, ZZ zeroed out, jax gradient with the cotengra planner during training.</div>
 </section>
 
 </div>

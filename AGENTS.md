@@ -74,7 +74,8 @@ HADRON_REFERENCE_QASM=<folder> python -m pytest tests    # + compare with the gr
 | `test_target_is_physical` | the 12-qubit target keeps its norm and holds one filled seat per site |
 | `test_trainable_circuit_starts_as_cheap_circuit` | at its starting angles, the trainable circuit is exactly the cheap circuit |
 | `test_trainable_circuit_shape` | 1,167 angles; two-qubit blocks: 50 pair, 30 electric, 47 SWAP |
-| `test_quick_training` (slow) | 12-qubit training still reaches fidelity ≥ 0.995 with ≤ 360 CNOTs |
+| `test_zero_out_zz` | zeroing out ZZ fixes exactly the 80 pair + electric ZZ angles (1,087 angles left), no SWAP's |
+| `test_quick_training` (slow) | 12-qubit training still reaches fidelity ≥ 0.995 with ≤ 360 CNOTs (≥ 0.994, ≤ 310 with ZZ zeroed out) |
 
 - **Expected numbers in the tests change only on purpose**, and the commit message says why.
 
@@ -119,7 +120,7 @@ No personal names; links work; readable at phone width; dark mode works.
 - **Mass sign is per site** (− − + + …), not per qubit; the per-qubit version made the mass term do nothing.
 - **Hadron start:** site s sits on qubits (2s, 2s+2) if s is even, (2s−1, 2s+1) if odd.
 - **Two-qubit blocks cost 3 CNOTs** in IBM's trainable circuit (exp(i(a XX + b YY + c ZZ))); a block with c = 0
-  needs only 2. Look at what each building block costs before tuning anything else.
+  needs only 2 (`--zero-out-zz`). Look at what each building block costs before tuning anything else.
 
 ## Style
 

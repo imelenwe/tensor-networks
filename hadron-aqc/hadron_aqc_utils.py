@@ -314,7 +314,7 @@ from scipy.optimize import minimize
 from qiskit import transpile
 from qiskit.transpiler import CouplingMap, PassManager
 from qiskit.transpiler.passes import Collect2qBlocks, ConsolidateBlocks
-from qiskit_addon_aqc_tensor.ansatz_generation import generate_ansatz_from_circuit
+from qiskit_addon_aqc_tensor.ansatz_generation import generate_ansatz_from_circuit, KAK
 from qiskit_addon_aqc_tensor.simulation import tensornetwork_from_circuit, compute_overlap
 from qiskit_addon_aqc_tensor.simulation.quimb import QuimbSimulator
 from qiskit_addon_aqc_tensor.objective import MaximizeStateFidelity
@@ -390,16 +390,34 @@ def check_target(target_mps):
 
 
 def build_cheap_trainable_circuit(n_sites, num_trotter_steps, num_coarse_steps, use_meson_not_vacuum,
-                                  kinetic_strength=KINETIC_STRENGTH, electric_field_strength=ELECTRIC_FIELD_STRENGTH, mass=MASS):
+                                  kinetic_strength=KINETIC_STRENGTH, electric_field_strength=ELECTRIC_FIELD_STRENGTH, mass=MASS,
+                                  zero_out_zz=False):
     """Same circuit with fewer, bigger steps (strengths x num_trotter_steps/num_coarse_steps);
-    the library turns it into a trainable circuit whose starting angles copy it exactly."""
+    the library turns it into a trainable circuit whose starting angles copy it exactly.
+    zero_out_zz: keep the ZZ angle at 0 in every two-qubit block where it starts at 0 (pair and electric blocks);
+    those blocks then need 2 CNOTs instead of 3 after transpiling."""
     strength_scale = num_trotter_steps / num_coarse_steps
     coarse_circuit = construct_circuit(n_sites, num_coarse_steps,
                                        kinetic_strength * strength_scale,
                                        electric_field_strength * strength_scale,
                                        mass * strength_scale,
                                        use_meson_not_vacuum=use_meson_not_vacuum)
-    return generate_ansatz_from_circuit(coarse_circuit, qubits_initially_zero=True)
+    ansatz, starting_angles = generate_ansatz_from_circuit(coarse_circuit, qubits_initially_zero=True)
+    if zero_out_zz:
+        ansatz, starting_angles = zero_out_zz_angles(ansatz, starting_angles)
+    return ansatz, starting_angles
+
+
+def zero_out_zz_angles(ansatz, starting_angles):
+    """Fix the ZZ angle (the third angle, c, of each two-qubit KAK block) to 0 wherever it starts at 0,
+    and drop it from the angles training can turn."""
+    starting_angles = np.asarray(starting_angles)
+    position = {angle: i for i, angle in enumerate(ansatz.parameters)}
+    zz_angles_at_zero = [instruction.operation.params[2] for instruction in ansatz.data
+                         if isinstance(instruction.operation, KAK)
+                         and abs(starting_angles[position[instruction.operation.params[2]]]) < 1e-9]
+    zeroed_ansatz = ansatz.assign_parameters({angle: 0.0 for angle in zz_angles_at_zero})
+    return zeroed_ansatz, starting_angles[[position[angle] for angle in zeroed_ansatz.parameters]]
 
 
 def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=TRAINING_MAX_STEPS, progress=None, planner=None):

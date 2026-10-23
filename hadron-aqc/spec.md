@@ -57,8 +57,8 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 
 - Much harder than the old circuit (12 qubits: 1.9× fewer CNOTs vs 4.4×). Before training: 0.29 / 0.43 at 32 qubits.
 - 7-step start, 32 qubits, meson: 0.775 before training, then killed (out of RAM, 24 GB laptop) before step 1.
-- A collaborator, same circuit, 120 qubits, 5-step start: ~0.75. On x = 100 they reach 0.990 at 120 qubits (5 steps + 2-CNOT lock: 3548 CNOTs, depth 75).
-- Next: wait for the circuit decision; add the 2-CNOT lock; rerun 12 → 32 qubits on the chosen circuit. The script is up to date; the TEBD notebook is not (see Files).
+- A collaborator, same circuit, 120 qubits, 5-step start: ~0.75. On x = 100 they reach 0.990 at 120 qubits (5 steps + zeroing out ZZ: 3548 CNOTs, depth 75).
+- Next: wait for the circuit decision; rerun (with `--zero-out-zz`) 12 → 32 qubits on the chosen circuit. The script is up to date; the TEBD notebook is not (see Files).
 
 **Clean-up, once the circuit is confirmed:**
 - [ ] TEBD notebook: rerun and test it on the confirmed circuit (planner on, new angle files instead of `*_k3.npz`, refresh its tables), as part of its rewrite.
@@ -106,7 +106,7 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 - [ ] 11. About 30 qubits (15 sites), 10 steps: target + training, 3- and 4-step starts (compression failed at ~30 qubits before). Train at bond 128, check at higher bond (bond 128 can mislead on hard states).
 - [ ] 12. 120-qubit training — needs a cluster; or share the 120-qubit targets + merging trick with the parallel implementation.
 
-**Parallel implementation (2026-10-04 report):** meson, 10 steps, up to 80 qubits at F > 0.999 (4–5-step starts; 80 qubits: 2180 CX / 2q depth 68 at F 0.999425; 21–31 h per run on a cluster). A tweak (one angle held at zero in ~60% of blocks) saves a further 12–14% CNOTs: the **2-CNOT lock** (ZZ angle c of each KAK block kept at 0 where it starts at 0: pair and electric blocks, 80 of 127 at 12 qubits) — not in our script yet, next code change. Not yet: 20 steps at δt = 0.0015, or 120 qubits. Their 12-qubit counts are at optimisation level 1, so not directly comparable with ours (level 3).
+**Parallel implementation (2026-10-04 report):** meson, 10 steps, up to 80 qubits at F > 0.999 (4–5-step starts; 80 qubits: 2180 CX / 2q depth 68 at F 0.999425; 21–31 h per run on a cluster). A tweak (one angle held at zero in ~60% of blocks) saves a further 12–14% CNOTs: **zeroing out ZZ** (ZZ angle c of each KAK block kept at 0 where it starts at 0: pair and electric blocks, 80 of 127 at 12 qubits). Done 2026-10-23: `build_cheap_trainable_circuit(..., zero_out_zz=True)`, script `--zero-out-zz`; 12 qubits CNOTs ~350 → 301, two-qubit depth 82 → 72, fidelity 0.9957 / 0.9960 → 0.9950 / 0.9945 (vacuum / meson). Not yet: 20 steps at δt = 0.0015, or 120 qubits. Their 12-qubit counts are at optimisation level 1, so not directly comparable with ours (level 3).
 
 **Choices (revisit if needed):** start from all-|0⟩ (X gates inside the circuit); vacuum and meson trained separately.
 

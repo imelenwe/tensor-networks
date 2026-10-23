@@ -47,11 +47,15 @@ parser.add_argument("--max-hours", type=float, default=None, help="stop each sta
 parser.add_argument("--planner-minutes", type=float, default=None,
                     help="jax only: let cotengra plan the training contraction for this many minutes "
                          "(much less memory and time; try 5, about 30 at 120 qubits). Default: off (quimb's greedy order)")
+parser.add_argument("--zero-out-zz", action="store_true",
+                    help="keep the ZZ angle at 0 where it starts at 0 (pair and electric blocks): 2 CNOTs instead of 3 each")
 args = parser.parse_args()
 
 # one folder per run, named after its settings
 run_name = (f"{2 * args.sites}q_{args.steps}steps_{args.coarse_steps}cheap"
             f"_target{args.target_bond}_training{args.training_bond}_{args.gradient}")
+if args.zero_out_zz:
+    run_name += "_zerozz"            # these runs get their own folder
 if len(args.states) == 1:
     run_name += f"_{args.states[0]}"   # a single-state run gets its own folder, never mixed with a both-states run
 hadron_aqc_folder = Path(__file__).resolve().parent.parent
@@ -179,10 +183,12 @@ for label in args.states:
         f"count of filled seats={count_of_filled_seats:.4f} (must be {args.sites})")
 
     # cheap trainable circuit
-    ansatz, starting_angles = build_cheap_trainable_circuit(args.sites, args.steps, args.coarse_steps, use_meson_not_vacuum)
+    ansatz, starting_angles = build_cheap_trainable_circuit(args.sites, args.steps, args.coarse_steps, use_meson_not_vacuum,
+                                                            zero_out_zz=args.zero_out_zz)
     untrained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(starting_angles), training_settings)
     fidelity_before = float(mps_fidelity(untrained_mps, target_mps))
-    log(f"{label}: cheap {args.coarse_steps}-step circuit, {len(starting_angles)} angles, fidelity before training={fidelity_before:.6f}")
+    log(f"{label}: cheap {args.coarse_steps}-step circuit{' (ZZ zeroed out)' if args.zero_out_zz else ''}, "
+        f"{len(starting_angles)} angles, fidelity before training={fidelity_before:.6f}")
     progress_file = run_folder / f"progress_{label}.npy"
     if args.resume and progress_file.exists():
         starting_angles = np.load(progress_file)   # "fidelity before training" above stays the cheap circuit's, for the table
