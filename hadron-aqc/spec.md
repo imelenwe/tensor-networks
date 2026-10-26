@@ -81,13 +81,23 @@ x = 200 is expected. All x = 200 results before 2026-10-26 used mass 0.03.
 - [x] Both circuits via `--x 100` / `--x 200` (mass 0.0424264 at x = 200); 12 qubits: CNOTs 673 → 301,
       fidelity 0.9994 / 0.9995 (x = 100) and 0.9945 / 0.9948 (x = 200), vacuum / meson — 2026-10-26.
 - [x] README: HPC commands for both x at 32 / 40 / 120 qubits — 2026-10-26.
+- [x] x = 200, 20 qubits, meson, ZZ zeroed out — why 5 steps stall (2026-10-26, scratch prototype): warm-starting
+      T6 → T11 gives the same 0.9833 as training straight, so the 5-step circuit is too small (not stuck); second-order
+      Trotter order for the cheap circuit also changes nothing (12 qubits). Fidelity vs coarse steps (full: 1195 CNOTs, depth 162):
+      5: 535 / 72 / 0.9833 · 6: 645 / 87 / 0.9947 · 7: 755 / 102 / 0.9979 · 8: 865 / 117 / 0.9991 (CNOTs / depth / fidelity).
+      Shared with the group; the professor's plan uses 6.
+- [ ] Waiting: a collaborator runs our script on the group's HPC (120 qubits, x = 100 and 200); compare with their
+      x = 100 result (7010 → 3548 CNOTs, depth 147 → 75, fidelity 0.990).
+- [ ] Hybrid circuit (the professor's plan): first 10 steps (T11) compressed to a 6-step AQC circuit, then 7 ordinary
+      Trotter steps, reaching 15–17 time steps. Needs: append steps 11, 12, … in the right qubit layout (step 1 skips a
+      SWAP layer, later steps don't); check the hybrid against the exact full circuit at 12–20 qubits; count CNOTs and
+      depth vs the full circuit. Spec first.
 - [ ] Confirm with the group: x = 100 also compressed from T11 (not the published T20).
 - [ ] Send the group our QASM (T11, both x, 120 qubits) to cross-check.
 - [ ] Ask the group for corrected x = 200 files (mass 0.0424264) for the reference test.
 - [ ] Status page: both circuits, mass corrected, 12-qubit results.
 - [ ] 32 qubits, both x (x = 100 first); then 40; then 120 on the HPC.
 - [ ] x = 200: try a 7-step start on the HPC (does not fit the 24 GB laptop).
-- [ ] Better starting point without extra CNOTs: second-order Trotter order for the cheap circuit; warm-started stages.
 - [ ] Remove the local copies of the four account skills (`~/.claude/skills/`), now synced to the account.
 
 **Clean-up, once the circuit is confirmed:**
