@@ -48,6 +48,21 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 - **Why a cheap Trotter circuit first (t=10 target, library, tested 2026-09-30):** k=1 (62 CX) trains only to 0.20 / 0.43 (vac/mes) — too few gate layers to build the entanglement; k=2 (129) 0.9996 / 0.967; k=3 (~200) 0.99997 / 0.99999. Same k=3 shape from **random** angles: 0.968 / 0.981. → the cheap circuit sets the gate budget AND gives the good starting point.
 - **Mass term** barely changes dynamics (m = 0 / 0.03 / 0.3 give near-identical output) — likely a sign-placement issue in the tutorial circuit (see 20-step list).
 
+## The two circuits (decided 2026-10-26): run both
+
+The group's x (hopping ratio) sets two of the three strengths per Trotter step (dt = 0.0015, m/g = 1);
+`strengths_for_x(x)` in the utils file, script option `--x`:
+
+| | kinetic strength = x·dt | electric field strength | mass = 2·√x·dt |
+|---|---|---|---|
+| **x = 100** (tracker issue #254, as published) | 0.15 | −0.226125 | 0.03 |
+| **x = 200** (the group's 2026-10-19 files, mass corrected) | 0.3 | −0.226125 | 0.0424264 |
+
+Same gates, mass signs (− − + +) and starting state for both; target T11, 5-step start. Checked: x = 100 equals the #254
+T20 files gate for gate; x = 200 equals the 2026-10-19 files once their mass 0.03 is replaced by 0.0424264
+(those files still carry 0.03, so the reference test fails on them until corrected files arrive). Lower fidelity at
+x = 200 is expected. All x = 200 results before 2026-10-26 used mass 0.03.
+
 ## Now (2026-10-22): x = 200 circuit, 11 steps, 5-step start, via the script
 
 | qubits | state | CNOTs | two-qubit depth | fidelity (exact, training) | time |
@@ -58,7 +73,22 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 - Much harder than the old circuit (12 qubits: 1.9× fewer CNOTs vs 4.4×). Before training: 0.29 / 0.43 at 32 qubits.
 - 7-step start, 32 qubits, meson: 0.775 before training, then killed (out of RAM, 24 GB laptop) before step 1.
 - A collaborator, same circuit, 120 qubits, 5-step start: ~0.75. On x = 100 they reach 0.990 at 120 qubits (5 steps + zeroing out ZZ: 3548 CNOTs, depth 75).
-- Next: wait for the circuit decision; rerun (with `--zero-out-zz`) 12 → 32 qubits on the chosen circuit. The script is up to date; the TEBD notebook is not (see Files).
+- The script is up to date; the TEBD notebook is not (see Files).
+
+## Pending actions
+
+- [x] Zeroing out ZZ in the script (`--zero-out-zz`) — 2026-10-23.
+- [x] Both circuits via `--x 100` / `--x 200` (mass 0.0424264 at x = 200); 12 qubits: CNOTs 673 → 301,
+      fidelity 0.9994 / 0.9995 (x = 100) and 0.9945 / 0.9948 (x = 200), vacuum / meson — 2026-10-26.
+- [x] README: HPC commands for both x at 32 / 40 / 120 qubits — 2026-10-26.
+- [ ] Confirm with the group: x = 100 also compressed from T11 (not the published T20).
+- [ ] Send the group our QASM (T11, both x, 120 qubits) to cross-check.
+- [ ] Ask the group for corrected x = 200 files (mass 0.0424264) for the reference test.
+- [ ] Status page: both circuits, mass corrected, 12-qubit results.
+- [ ] 32 qubits, both x (x = 100 first); then 40; then 120 on the HPC.
+- [ ] x = 200: try a 7-step start on the HPC (does not fit the 24 GB laptop).
+- [ ] Better starting point without extra CNOTs: second-order Trotter order for the cheap circuit; warm-started stages.
+- [ ] Remove the local copies of the four account skills (`~/.claude/skills/`), now synced to the account.
 
 **Clean-up, once the circuit is confirmed:**
 - [ ] TEBD notebook: rerun and test it on the confirmed circuit (planner on, new angle files instead of `*_k3.npz`, refresh its tables), as part of its rewrite.

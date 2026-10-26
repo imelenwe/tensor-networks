@@ -1,10 +1,10 @@
 """Compress the hadron circuit with AQC-Tensor, for the vacuum, the meson, or both (one after the other).
 
 Run from the hadron-aqc folder, for example:
-    python scripts/run_hadron_aqc.py --sites 6 --steps 20 --coarse-steps 4 --target-bond 64 --training-bond 64 --states vacuum meson --gradient jax
+    python scripts/run_hadron_aqc.py --x 200 --sites 6 --steps 11 --coarse-steps 5 --target-bond 64 --training-bond 64 --states vacuum meson --gradient jax
 
 Everything the run makes goes into one folder, named after its settings, for example
-results/12q_20steps_4cheap_target64_training64_jax/ (a single state adds its name, e.g. ..._training64_jax_meson/):
+results/12q_x200_11steps_5cheap_target64_training64_jax/ (a single state adds its name, e.g. ..._training64_jax_meson/):
     summary.md   the results as a table (readable)
     run.log      everything printed on screen, including warnings and errors
     results.json the same numbers as summary.md, for programs
@@ -30,9 +30,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # so the utils 
 from hadron_aqc_utils import (build_target_using_lib, check_target, build_cheap_trainable_circuit,
                               make_simulator_settings, make_contraction_planner, train_to_target, mps_fidelity,
                               tensornetwork_from_circuit, construct_circuit, count_cnots,
-                              count_and_verify, KINETIC_STRENGTH, ELECTRIC_FIELD_STRENGTH, MASS)
+                              count_and_verify, strengths_for_x)
 
 parser = argparse.ArgumentParser(description="Compress the hadron circuit with AQC-Tensor")
+parser.add_argument("--x", type=float, required=True,
+                    help="the group's x (hopping ratio): 100 (tracker issue #254) or 200; sets the kinetic strength and the mass")
 parser.add_argument("--sites", type=int, required=True)
 parser.add_argument("--steps", type=int, required=True)
 parser.add_argument("--coarse-steps", type=int, required=True)
@@ -50,9 +52,11 @@ parser.add_argument("--planner-minutes", type=float, default=None,
 parser.add_argument("--zero-out-zz", action="store_true",
                     help="keep the ZZ angle at 0 where it starts at 0 (pair and electric blocks): 2 CNOTs instead of 3 each")
 args = parser.parse_args()
+kinetic_strength, electric_field_strength, mass = strengths_for_x(args.x)
+strengths = dict(kinetic_strength=kinetic_strength, electric_field_strength=electric_field_strength, mass=mass)
 
 # one folder per run, named after its settings
-run_name = (f"{2 * args.sites}q_{args.steps}steps_{args.coarse_steps}cheap"
+run_name = (f"{2 * args.sites}q_x{args.x:g}_{args.steps}steps_{args.coarse_steps}cheap"
             f"_target{args.target_bond}_training{args.training_bond}_{args.gradient}")
 if args.zero_out_zz:
     run_name += "_zerozz"            # these runs get their own folder
@@ -129,7 +133,8 @@ def write_summary(results):
         ("time", lambda r: f"{r['minutes']:.1f} min"),
     ]
     lines = [f"# {run_name}", "",
-             f"{2 * args.sites} qubits ({args.sites} sites), {args.steps} Trotter steps, {args.coarse_steps}-step cheap circuit, "
+             f"{2 * args.sites} qubits ({args.sites} sites), x = {args.x:g} (kinetic {kinetic_strength}, electric {electric_field_strength}, "
+             f"mass {mass}), {args.steps} Trotter steps, {args.coarse_steps}-step cheap circuit, "
              f"target max_bond={args.target_bond}, training max_bond={args.training_bond}, gradient={args.gradient}. "
              f"Started {results['started']}.", "",
              "| | " + " | ".join(labels) + " |",
@@ -139,7 +144,8 @@ def write_summary(results):
     (run_folder / "summary.md").write_text("\n".join(lines) + "\n")
 
 
-log(f"started {time.strftime('%Y-%m-%d %H:%M')}: {2 * args.sites} qubits ({args.sites} sites), {args.steps} Trotter steps, "
+log(f"started {time.strftime('%Y-%m-%d %H:%M')}: {2 * args.sites} qubits ({args.sites} sites), x = {args.x:g} "
+    f"(kinetic {kinetic_strength}, electric {electric_field_strength}, mass {mass}), {args.steps} Trotter steps, "
     f"{args.coarse_steps}-step cheap circuit, target max_bond={args.target_bond}, training max_bond={args.training_bond}, gradient={args.gradient}")
 if args.gradient == "jax":
     log(f"note: with gradient=jax the training uses the exact circuit; max_bond={args.training_bond} only applies to the printed fidelities")
@@ -175,7 +181,7 @@ for label in args.states:
             target_mps = pickle.load(saved)
     else:
         log(f"{label}: building target...")
-        target_mps = build_target_using_lib(args.sites, args.steps, args.target_bond, use_meson_not_vacuum)
+        target_mps = build_target_using_lib(args.sites, args.steps, args.target_bond, use_meson_not_vacuum, **strengths)
         save_target(target_file, target_mps)
     norm_violation, _, count_of_filled_seats = check_target(target_mps)
     norm_violation = round(float(norm_violation), 6) + 0.0   # a rounding leftover like -1e-13 becomes 0.0 (adding 0.0 also turns -0.0 into 0.0)
@@ -184,7 +190,7 @@ for label in args.states:
 
     # cheap trainable circuit
     ansatz, starting_angles = build_cheap_trainable_circuit(args.sites, args.steps, args.coarse_steps, use_meson_not_vacuum,
-                                                            zero_out_zz=args.zero_out_zz)
+                                                            zero_out_zz=args.zero_out_zz, **strengths)
     untrained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(starting_angles), training_settings)
     fidelity_before = float(mps_fidelity(untrained_mps, target_mps))
     log(f"{label}: cheap {args.coarse_steps}-step circuit{' (ZZ zeroed out)' if args.zero_out_zz else ''}, "
@@ -228,7 +234,7 @@ for label in args.states:
 
     # count CNOTs: original circuit vs trained circuit
     log(f"{label}: counting CNOTs (transpiling both circuits) and checking the transpiled circuit...")
-    original_circuit = construct_circuit(args.sites, args.steps, KINETIC_STRENGTH, ELECTRIC_FIELD_STRENGTH, MASS,
+    original_circuit = construct_circuit(args.sites, args.steps, kinetic_strength, electric_field_strength, mass,
                                          use_meson_not_vacuum=use_meson_not_vacuum)
     original_cnots, original_two_qubit_depth, original_total_depth, _ = count_cnots(original_circuit)
     counts = count_and_verify(ansatz, result.x, target_mps, training_settings)

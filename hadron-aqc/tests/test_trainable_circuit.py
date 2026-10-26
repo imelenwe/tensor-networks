@@ -1,6 +1,6 @@
 """Checks on the trainable circuit IBM's library builds from our cheap circuit, and (slow) on training itself.
 
-The expected numbers below are for the current circuit (12 qubits, 11 steps, 5-step start).
+The expected numbers below are for the default circuit (x = 200, 12 qubits, 11 steps, 5-step start).
 Change them only on purpose, and say why in the commit message.
 """
 from collections import Counter
@@ -19,8 +19,8 @@ N_SITES, N_STEPS, N_COARSE_STEPS = 6, 11, 5
 EXPECTED_ANGLES = 1167
 EXPECTED_BLOCKS = {"pair": 50, "electric": 30, "swap": 47}   # two-qubit blocks, sorted by their starting (a, b, c)
 EXPECTED_ANGLES_ZERO_OUT_ZZ = 1087                         # 1167 minus the 80 ZZ angles fixed at 0 (50 pair + 30 electric)
-# slow check, as {zero_out_zz: (lowest fidelity, most CNOTs)}; measured: off 0.9957 / 0.9960 with 347 / 350 CNOTs,
-# on 0.9950 / 0.9945 with 301 / 301 CNOTs (vacuum / meson)
+# slow check, as {zero_out_zz: (lowest fidelity, most CNOTs)}; measured 2026-10-26 (x = 200, mass 0.0424264):
+# off 0.9953 / 0.9959 with 349 / 351 CNOTs, on 0.9945 / 0.9945 with 301 / 301 CNOTs (vacuum / meson)
 EXPECTED_TRAINING = {False: (0.995, 360), True: (0.994, 310)}
 
 

@@ -320,10 +320,28 @@ from qiskit_addon_aqc_tensor.simulation.quimb import QuimbSimulator
 from qiskit_addon_aqc_tensor.objective import MaximizeStateFidelity
 
 # ---- Settings: every number below that affects results, in one place ----
-# physics: the tutorial's strengths, applied once per Trotter step
-KINETIC_STRENGTH = 0.30          # pair gates: how easily particles hop (and quark-antiquark pairs are created); the group's current circuit files (x = 200; was 0.15)
-ELECTRIC_FIELD_STRENGTH = -0.226125  # electric gates: energy cost of the string between quark and antiquark (background flux 300, as in tracker issue #254 and the group's current files; was -0.01)
-MASS = 0.03                      # Rz turns at the end of each step: quark mass
+# physics: the strengths applied once per Trotter step. Two of them follow from the group's setting x, the
+# "hopping ratio" (how strong hopping is compared with the electric field's cost; bigger x = finer lattice).
+# The group runs x = 100 (tracker issue #254) and x = 200; see strengths_for_x below.
+TROTTER_TIME_STEP = 0.0015       # dt: time per Trotter step, as in the group's circuits
+MASS_OVER_COUPLING = 1           # m/g: quark mass in units of the coupling, as in the group's circuits
+ELECTRIC_FIELD_STRENGTH = -0.226125  # electric gates: energy cost of the string between quark and antiquark (background flux 300); same for every x
+DEFAULT_X = 200                  # the x behind the default strengths below (notebooks, tests); the script asks for x every run
+
+
+def strengths_for_x(x):
+    """The group's x (hopping ratio) -> (kinetic strength, electric field strength, mass), each per Trotter step.
+        kinetic strength = x * dt                (pair gates)
+        mass             = 2 * (m/g) * sqrt(x) * dt   (Rz turns at the end of each step)
+        electric field strength: does not depend on x
+    Rounded to 7 decimals, as written in the group's circuit files.
+    x = 100: 0.15, -0.226125, 0.03 (tracker issue #254);  x = 200: 0.3, -0.226125, 0.0424264."""
+    kinetic_strength = round(x * TROTTER_TIME_STEP, 7)
+    mass = round(2 * MASS_OVER_COUPLING * np.sqrt(x) * TROTTER_TIME_STEP, 7)
+    return kinetic_strength, ELECTRIC_FIELD_STRENGTH, mass
+
+
+KINETIC_STRENGTH, _, MASS = strengths_for_x(DEFAULT_X)   # 0.3 and 0.0424264 (pair gates: how easily particles hop; Rz turns: quark mass)
 # simulation
 TARGET_SVD_CUTOFF = 1e-10        # building targets: quimb's default (drops near-zero numbers; 2x faster than 0, same accuracy)
 TRAINING_SVD_CUTOFF = 1e-10      # simulating the trainable circuit: quimb's default, written out

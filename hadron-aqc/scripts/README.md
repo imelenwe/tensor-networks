@@ -28,35 +28,52 @@ Check: `python scripts/run_hadron_aqc.py --help` lists the options.
 
 ## Commands to run (copy-paste, from the `hadron-aqc` folder)
 
-Run each state as its own job; they are independent. Memory and time per job are given with each command.
+Two circuits, chosen with `--x` (the group's x): **`100`** (tracker issue #254) and **`200`**. Same gates, different
+strengths; x = 200 is much harder to compress. Run **one state per job** (vacuum and meson are independent), so a
+full set is 2 circuits × 2 states = 4 jobs per size. Always add `--zero-out-zz` (2 CNOTs instead of 3 in ~60% of blocks).
 
-**1. Quick test (~30 s, any machine).** Checks the setup. Expected: fidelity reached in training about 0.9964 ("converged"), CNOTs 673 → about 351.
-
-```bash
-python scripts/run_hadron_aqc.py --sites 6 --steps 11 --coarse-steps 5 --target-bond 64 --training-bond 64 --states meson --gradient jax
-```
-
-**2. 32 qubits (jax, 32-bit, cotengra planner).** Measured on a laptop (M4 Pro), 2026-10-22, 5-step start: target ~6 min, planning 5 min, ~2.5 min per training step (the first ~10–15 min), RAM ~3 GB. Both states level off within ~1.5 h: fidelity **0.901** (vacuum) and **0.943** (meson), CNOTs 1978 → ~1020, two-qubit depth 162 → 82.
+**1. Quick test (~30 s, any machine).** Checks the setup. Expected (measured 2026-10-26, 12 qubits, 5-step start):
+CNOTs 673 → 301, fidelity ≈ 0.9995 (x = 100) / 0.9948 (x = 200), "converged".
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 3 --planner-minutes 5 --zero-out-zz 2>> stderr_32q_meson.log
-python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states vacuum --gradient jax --max-hours 3 --planner-minutes 5 --zero-out-zz 2>> stderr_32q_vacuum.log
+python scripts/run_hadron_aqc.py --x 100 --sites 6 --steps 11 --coarse-steps 5 --target-bond 64 --training-bond 64 --states meson --gradient jax --zero-out-zz
+python scripts/run_hadron_aqc.py --x 200 --sites 6 --steps 11 --coarse-steps 5 --target-bond 64 --training-bond 64 --states meson --gradient jax --zero-out-zz
 ```
 
-**For a higher fidelity, start from more steps:** change `--coarse-steps 5` to `6` or `7` (more angles and CNOTs; ~7/5 × the time per step). Each choice gets its own results folder (`..._7cheap_...`). Not yet measured.
-
-**3. 120 qubits, 11 steps. Estimate, not yet run.** Measured on the earlier 20-step circuit at 24, 32, 40 qubits and extrapolated: peak memory ~50–55 GB (ask for 128 GB), planning ~30 min once, ~5 min per training step. Target: about 1 h; at bond 1024 it may lose ~1.5% (norm violation ~0.012–0.016). Without the planner it does not fit any machine.
+**2. Larger runs (HPC).** Set the two variables on the first line, then run the line for your size. Each job writes to
+its own folder `results/<qubits>q_x<x>_11steps_<k>cheap_..._<state>/` and its own error log.
 
 ```bash
-python scripts/run_hadron_aqc.py --sites 60 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 72 --planner-minutes 30 --zero-out-zz 2>> stderr_120q_meson.log
-python scripts/run_hadron_aqc.py --sites 60 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states vacuum --gradient jax --max-hours 72 --planner-minutes 30 --zero-out-zz 2>> stderr_120q_vacuum.log
+X=100; STATE=meson      # X: 100 or 200;  STATE: meson or vacuum  (one job each)
+
+# 32 qubits
+python scripts/run_hadron_aqc.py --x $X --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states $STATE --gradient jax --planner-minutes 5 --max-hours 12 --zero-out-zz 2>> stderr_32q_x${X}_${STATE}.log
+# 40 qubits
+python scripts/run_hadron_aqc.py --x $X --sites 20 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states $STATE --gradient jax --planner-minutes 10 --max-hours 24 --zero-out-zz 2>> stderr_40q_x${X}_${STATE}.log
+# 120 qubits (the benchmark size)
+python scripts/run_hadron_aqc.py --x $X --sites 60 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states $STATE --gradient jax --planner-minutes 30 --max-hours 72 --zero-out-zz 2>> stderr_120q_x${X}_${STATE}.log
 ```
 
-`--max-hours 72` leaves room in a 4-day job for building the target and the final counting. If a job is killed anyway (time limit, crash, node failure), rerun the exact same line with `--resume` added before `2>>`, e.g.
+| what to set | how |
+|---|---|
+| `--sites` | qubits ÷ 2; use an even number (16 = 32 qubits, 20 = 40, 60 = 120) |
+| `--coarse-steps` | 5 for both x. For x = 200, also try **7** (better start, more CNOTs, ~1.4× RAM and time per step; its own `_7cheap_` folder) |
+| `--planner-minutes` | planning time for the training contraction, done once per job: 5 at 32 qubits, 10 at 40, 30 at 120 |
+| `--max-hours` | training stops cleanly after this; set it ~6 h below the job's wall-time limit (target build + final counting) |
+| memory to request | see the table below |
 
-```bash
-python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target-bond 1024 --training-bond 512 --states meson --gradient jax --max-hours 3 --planner-minutes 5 --zero-out-zz --resume 2>> stderr_32q_meson.log
-```
+| size | RAM to request (5-step start) | time | basis |
+|---|---|---|---|
+| 12 qubits | any machine | ~30 s | measured |
+| 32 qubits | 16 GB (7-step: 64 GB) | target ~6 min, ~2.5 min per training step, levels off in ~1.5–3 h | measured on a laptop (x = 200); a 7-step start did not fit 24 GB |
+| 40 qubits | 32 GB | ~1.5–3 h | measured on the earlier 20-step circuit (13 GB, 1.5 h) |
+| 120 qubits | 128 GB (7-step: 256 GB) | target ~1 h, planning ~30 min, ~5 min per training step, 10–30 h | **estimate**, extrapolated from 24–40 qubits on the earlier circuit |
+
+What to expect at x = 200 (measured at 32 qubits, 5-step start, before the mass correction): fidelity levels off at
+0.90 (vacuum) / 0.94 (meson). The group expects lower fidelity at x = 200; x = 100 should stay much higher (0.9995 at 12 qubits).
+
+If a job is killed (time limit, crash, node failure), rerun the exact same line with `--resume` added before `2>>`:
+finished states are skipped, the saved target and contraction plan are reused, and training continues from the last step.
 
 **What to send back:** the `results/<run name>/` folder (without the large `target_*.pkl`) and the `stderr_*.log` file.
 
@@ -64,6 +81,7 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target
 
 | option | meaning |
 |---|---|
+| `--x` | the group's x (hopping ratio): `100` (tracker issue #254) or `200`. Sets the kinetic strength (x × 0.0015) and the mass (2√x × 0.0015); the electric field strength (−0.226125) is the same for both. Folder name gets `_x100` / `_x200`. |
 | `--sites` | number of sites (qubits = 2 × sites); use an even number |
 | `--steps` | Trotter steps of the target (the group's current circuit: 11; the earlier tracker benchmark used 20) |
 | `--coarse-steps` | Trotter steps of the cheap starting circuit (5, about half of 11; 4 was used for the earlier 20-step circuit) |
@@ -76,7 +94,7 @@ python scripts/run_hadron_aqc.py --sites 16 --steps 11 --coarse-steps 5 --target
 | `--zero-out-zz` | keep the ZZ angle at 0 in every two-qubit block where it starts at 0 (pair and electric blocks): those compile to 2 CNOTs instead of 3. 12 qubits: CNOTs ~350 → 301, two-qubit depth 82 → 72, fidelity −0.001. The run folder gets `_zerozz`. |
 | `--resume` | continue a killed run (see below) |
 
-Strengths are fixed in `hadron_aqc_utils.py`: kinetic 0.30, electric −0.226125, mass 0.03 per Trotter step; mass sign per site (− − + + …); hadron start = both qubits of the two centre sites. With these, `construct_circuit(60, T, ...)` is gate-for-gate the group's current circuit files (`SU2_T{T}_SCV_200.qasm` / `SU2_T{T}_MID_200.qasm`, T = 1 … 11; checked 2026-10-22). The 12- and 32-qubit numbers above are on this circuit; the 120-qubit estimate and the gradient comparison below come from the earlier circuit (kinetic 0.15, electric −0.01, per-qubit mass, 20 steps).
+Strengths come from `--x` through `strengths_for_x` in `hadron_aqc_utils.py`, per Trotter step (dt = 0.0015): kinetic = x·dt, mass = 2·√x·dt, electric −0.226125 for both: x = 100 → 0.15 / −0.226125 / 0.03, x = 200 → 0.3 / −0.226125 / 0.0424264. Mass sign per site (− − + + …); hadron start = both qubits of the two centre sites. Checked gate for gate: x = 100 equals tracker issue #254's files (`SU2_T20_{SCV,MID}.qasm`); x = 200 equals the group's 2026-10-19 files (`SU2_T{T}_*_200.qasm`) once their mass 0.03 is corrected to 0.0424264. The gradient comparison below comes from the earlier circuit (kinetic 0.15, electric −0.01, per-qubit mass, 20 steps).
 
 ## Which gradient?
 
@@ -91,7 +109,7 @@ Measured at 32 qubits, 20 steps, meson, training bond 256, fidelity checked at b
 
 ## Output
 
-Everything goes to `results/<run name>/`, named after the settings, e.g. `results/32q_11steps_5cheap_target1024_training512_jax_meson/`:
+Everything goes to `results/<run name>/`, named after the settings, e.g. `results/32q_x100_11steps_5cheap_target1024_training512_jax_zerozz_meson/`:
 
 | file | what it is |
 |---|---|

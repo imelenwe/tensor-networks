@@ -68,7 +68,8 @@ HADRON_REFERENCE_QASM=<folder> python -m pytest tests    # + compare with the gr
 
 | test | checks |
 |---|---|
-| `test_circuit_matches_reference_files` | our circuit = the group's QASM files gate for gate, T1…T11, vacuum and hadron (skipped unless `HADRON_REFERENCE_QASM` points at a local copy; the files are not committed) |
+| `test_circuit_matches_reference_files` | our circuit = the group's QASM files gate for gate, T1…T11, vacuum and hadron (skipped unless `HADRON_REFERENCE_QASM` points at a local copy; the files are not committed; each file's x is read from the `manifest.json` next to it) |
+| `test_strengths_for_x` | x = 100 → 0.15, −0.226125, 0.03; x = 200 → 0.3, −0.226125, 0.0424264 |
 | `test_hadron_start_bits` | 12 qubits start as `0101 0101 0101` (vacuum) and `0101 1010 0101` (hadron) |
 | `test_mass_signs_per_site` | mass Rz pattern − − + + … (same sign inside a site) |
 | `test_target_is_physical` | the 12-qubit target keeps its norm and holds one filled seat per site |
@@ -108,6 +109,9 @@ No personal names; links work; readable at phone width; dark mode works.
   the group's QASM files.
 - **Commit and push only when the user asks.**
 - Keep `spec.md` short: current state, not history.
+- **Pending actions live in one place:** the "Pending actions" checklist in the folder's `spec.md`. Add a task when it comes up
+  (from the user, the group or a result), tick it with the date when done, in the same change that does it. Don't keep
+  action lists anywhere else (status pages may copy them, but the spec is the source).
 
 ## Gotchas (each one cost us hours)
 
