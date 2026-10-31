@@ -86,6 +86,11 @@ x = 200 is expected. All x = 200 results before 2026-10-26 used mass 0.03.
       Trotter order for the cheap circuit also changes nothing (12 qubits). Fidelity vs coarse steps (full: 1195 CNOTs, depth 162):
       5: 535 / 72 / 0.9833 · 6: 645 / 87 / 0.9947 · 7: 755 / 102 / 0.9979 · 8: 865 / 117 / 0.9991 (CNOTs / depth / fidelity).
       Shared with the group; the professor's plan uses 6.
+- [x] 40 qubits on the group's HPC, 5-step start, ZZ zeroed out (CNOTs 2500 → 1120, depth 162 → 72) — 2026-10-29:
+      x = 100 meson 0.996135 (converged, 5.6 h), vacuum 0.994136; x = 200 vacuum 0.8438 (24 h cap; target norm violation
+      0.025, too high), meson 0.9087 at step 61 (flat, +0.00001 per 17-min step; hit the 30 h Slurm limit, no summary).
+      Confirms the 20-qubit diagnosis: at x = 200 the 5-step circuit is too small.
+- [ ] x = 200 at 40 qubits with a 6-step start (not resuming the 5-step run); target bond above 1024 for vacuum.
 - [ ] Waiting: a collaborator runs our script on the group's HPC (120 qubits, x = 100 and 200); compare with their
       x = 100 result (7010 → 3548 CNOTs, depth 147 → 75, fidelity 0.990).
 - [ ] Hybrid circuit (the professor's plan): first 10 steps (T11) compressed to a 6-step AQC circuit, then 7 ordinary

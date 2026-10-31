@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tensor Chain Workbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,650&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Same look as the Backprop Workbook: left nav, one column, small checked exercises */
+  :root{
+    --bg:#F4F6F8; --paper:#FFFFFF; --ink:#18222D; --muted:#5A6878; --rule:#D5DCE3; --node:#EEF2F6;
+    --acc:#0F7A72; --acc-soft:#D9F0EC; --warm:#B4690E; --warm-soft:#FBEBD6; --bad:#B42318; --bad-soft:#FDE4E1; --card:#5B3FB8; --card-soft:#EEE9FB;
+    --display:'Source Serif 4', Georgia, serif; --body:'IBM Plex Sans', system-ui, sans-serif; --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#11161C; --paper:#19212A; --ink:#E7ECF1; --muted:#97A5B4; --rule:#2C3743; --node:#202A35;
+    --acc:#5CCBC0; --acc-soft:#123430; --warm:#F0A548; --warm-soft:#3A2A14; --bad:#FF8A7D; --bad-soft:#3D1D1A; --card:#B7A4F5; --card-soft:#251E3D; color-scheme:dark } }
+  :root[data-theme="dark"]{
+    --bg:#11161C; --paper:#19212A; --ink:#E7ECF1; --muted:#97A5B4; --rule:#2C3743; --node:#202A35;
+    --acc:#5CCBC0; --acc-soft:#123430; --warm:#F0A548; --warm-soft:#3A2A14; --bad:#FF8A7D; --bad-soft:#3D1D1A; --card:#B7A4F5; --card-soft:#251E3D; color-scheme:dark }
+  *{box-sizing:border-box}
+  body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.6; padding-inline:16px; padding-block:24px 72px; margin:0}
+  .layout{max-width:1100px; margin:0 auto; display:grid; grid-template-columns:190px minmax(0,1fr); gap:20px; align-items:start}
+  nav{position:sticky; top:16px; background:var(--paper); border:1px solid var(--rule); border-radius:10px; padding:12px}
+  nav p{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+  nav ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+  nav a{display:block; padding:5px 8px; border-radius:6px; color:var(--ink); text-decoration:none; font-size:14px}
+  nav a:hover{background:var(--node)}
+  @media (max-width:600px){ .layout{grid-template-columns:1fr} nav{top:0; z-index:2; padding:8px} nav p{display:none}
+    nav ol{flex-direction:row; overflow-x:auto} nav a{white-space:nowrap} }
+  main{display:flex; flex-direction:column; gap:18px; min-width:0}
+  h1,h2,h3{font-family:var(--display); text-wrap:balance; margin:0; line-height:1.2}
+  h1{font-size:clamp(26px,5vw,34px)} h2{font-size:21px} h3{font-size:16px}
+  p{margin:0; max-width:72ch}
+  section{background:var(--paper); border:1px solid var(--rule); border-radius:10px; padding:18px; display:flex; flex-direction:column; gap:12px; min-width:0; scroll-margin-top:16px}
+  .m{font-family:var(--mono); font-size:.92em}
+  .hint{color:var(--muted); font-size:14px}
+  .scroll{overflow-x:auto; max-width:100%}
+  pre{font-family:var(--mono); font-size:14px; background:var(--node); border-radius:8px; padding:10px 14px; margin:0; overflow-x:auto; line-height:1.45}
+  table{border-collapse:collapse; font-size:15px}
+  th,td{border-bottom:1px solid var(--rule); padding:6px 10px; text-align:left; vertical-align:middle}
+  th{font-weight:600; color:var(--muted); font-size:13px}
+  .vocab{border-left:3px solid var(--acc); background:var(--acc-soft); padding:10px 14px; border-radius:0 8px 8px 0; max-width:80ch; font-size:15px}
+  .vocab dt{font-weight:600; display:inline} .vocab dd{display:inline; margin:0} .vocab div{margin:3px 0}
+  .key{border-left:3px solid var(--warm); background:var(--warm-soft); padding:10px 14px; border-radius:0 8px 8px 0; max-width:74ch}
+  .count{border:2px solid var(--card); background:var(--card-soft); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; max-width:76ch}
+  .count h3{color:var(--card)}
+  .count .rule{font-size:17px; font-weight:600; color:var(--card); line-height:1.5}
+  svg text{font-family:var(--mono)}
+  .ex{display:flex; flex-direction:column; gap:10px}
+  .q{border:1px solid var(--rule); border-radius:8px; padding:10px 12px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px}
+  .q.ok{background:var(--acc-soft); border-color:var(--acc)} .q.no{background:var(--bad-soft); border-color:var(--bad)}
+  .q .lbl{flex:1 1 260px}
+  .q input{width:78px; font-family:var(--mono); font-size:15px; padding:4px 6px; border:1px solid var(--rule); border-radius:6px; background:var(--bg); color:var(--ink)}
+  .grid2{display:inline-grid; grid-template-columns:auto auto auto; gap:4px 6px; align-items:center; font-family:var(--mono); font-size:13px; color:var(--muted)}
+  input:focus-visible, button:focus-visible, nav a:focus-visible{outline:2px solid var(--acc); outline-offset:2px}
+  .btns{display:flex; flex-wrap:wrap; gap:10px}
+  button{font-family:var(--body); font-size:15px; padding:7px 14px; border-radius:7px; border:1px solid var(--rule); background:var(--paper); color:var(--ink); cursor:pointer}
+  button.primary{background:var(--acc); border-color:var(--acc); color:var(--paper)}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav aria-label="Sections">
+  <p>Workbook</p>
+  <ol>
+    <li><a href="index.html">← Learn index</a></li>
+    <li><a href="#words">Words we use</a></li>
+    <li><a href="#legs">1 · Legs</a></li>
+    <li><a href="#one">2 · One-qubit gate</a></li>
+    <li><a href="#two">3 · Two qubits as a table</a></li>
+    <li><a href="#cnot">4 · CNOT</a></li>
+    <li><a href="#split">5 · Splitting a table</a></li>
+    <li><a href="#chain">6 · The chain</a></li>
+    <li><a href="#trim">7 · Trimming</a></li>
+    <li><a href="#overlap">8 · Overlap and fidelity</a></li>
+    <li><a href="#runs">9 · What this means for our runs</a></li>
+  </ol>
+</nav>
+<main>
+<header style="display:flex;flex-direction:column;gap:6px">
+  <h1>Tensor Chain Workbook</h1>
+  <p class="hint">From one qubit to a chain of qubits, in small steps. Work each exercise on paper, then type your answer and press Check. Decimals are fine (0.707 for 1/√2); within 0.01 counts.</p>
+</header>
+
+<section id="words">
+  <h2>Words we use</h2>
+  <dl class="vocab">
+    <div><dt>Leg</dt> <dd>= one index of a tensor; the number of legs = how many indices you need to pick one element.</dd></div>
+    <div><dt>Row leg</dt> <dd>(the row index): changing it moves you down a column: [0,0] → [1,0].</dd></div>
+    <div><dt>Column leg</dt> <dd>(the column index): changing it moves you across a row: [0,0] → [0,1]. A leg is named after which index changes, not after the direction you move.</dd></div>
+    <div><dt>In</dt> <dd>= the gate's leg that is joined to the qubit's leg; it gets used up.</dd></div>
+    <div><dt>Out</dt> <dd>= the gate's leg that is left over; it becomes the qubit's leg after the gate.</dd></div>
+    <div><dt>Join</dt> <dd>two legs = match their index values, multiply, add up. Both legs disappear.</dd></div>
+    <div><dt>Part</dt> <dd>= a table that splits into one A times one B (rank 1) (section 5).</dd></div>
+    <div><dt>Rank</dt> <dd>= the number of linearly independent rows = the number of parts a table needs (section 5).</dd></div>
+    <div><dt>Entangled</dt> <dd>= the two-qubit table has rank more than 1: it can't be split into one A and one B (section 5).</dd></div>
+    <div><dt>Link</dt> <dd>= the shared "which part" index between two neighbouring qubit tensors (section 5).</dd></div>
+    <div><dt>Link size</dt> <dd>= the number of parts = how many values the link index can take = the rank (section 5).</dd></div>
+    <div><dt>Trimming</dt> <dd>= dropping the smallest parts so a link stays small (section 7).</dd></div>
+    <div><dt>Overlap, fidelity</dt> <dd>= how alike two states are; fidelity = overlap² (section 8).</dd></div>
+  </dl>
+</section>
+
+<section id="legs">
+  <h2>1. Legs</h2>
+  <p>Count how many numbers you must say to point at one entry. That count is the number of legs.</p>
+  <div class="scroll"><svg viewBox="0 0 640 150" width="640" height="150" role="img" aria-label="A list has 1 leg, a table 2 legs, a stack of tables 3 legs">
+    <g id="legsvg"></g></svg></div>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) The state |0⟩ = (1, 0)</span><input data-ans="1" aria-label="legs of |0>"> legs</div>
+    <div class="q"><span class="lbl">b) The gate X = [[0,1],[1,0]]</span><input data-ans="2" aria-label="legs of X"> legs</div>
+    <div class="q"><span class="lbl">c) |1⟩|0⟩ written as a 2 × 2 table (A picks the row, B the column)</span><input data-ans="2" aria-label="legs of two-qubit table"> legs</div>
+    <div class="q"><span class="lbl">d) CNOT, split by qubit (A in, B in, A out, B out)</span><input data-ans="4" aria-label="legs of CNOT"> legs</div>
+    <div class="q"><span class="lbl">e) A qubit tensor in the chain (left link, qubit, right link)</span><input data-ans="3" aria-label="legs of qubit tensor"> legs</div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="one">
+  <h2>2. A one-qubit gate</h2>
+  <p>Join the gate's <b>in</b> leg (its column leg) with the qubit's leg. That is matrix × vector. Legs left: 1 + 2 − 2 = 1, the gate's <b>out</b> leg.</p>
+<pre>X|0⟩:  [0 1]   [1]     [0·1 + 1·0]     [0]
+       [1 0] × [0]  =  [1·1 + 0·0]  =  [1]     → |1⟩</pre>
+  <p>H = [[0.707, 0.707], [0.707, −0.707]] (the Hadamard gate: it makes an equal mix of 0 and 1).</p>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) X|1⟩ = (?, ?)</span><input data-ans="1"><input data-ans="0"></div>
+    <div class="q"><span class="lbl">b) H|0⟩ = (?, ?)</span><input data-ans="0.707"><input data-ans="0.707"></div>
+    <div class="q"><span class="lbl">c) H|1⟩ = (?, ?)</span><input data-ans="0.707"><input data-ans="-0.707"></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="two">
+  <h2>3. Two qubits as a table</h2>
+  <p>A two-qubit state is 4 numbers, one per combination. Put them in a 2 × 2 table: <b>A's value picks the row, B's value picks the column</b>. Same numbers, picked by (A, B) instead of by position 1–4.</p>
+<pre>4 × 1 vector:  |0⟩|0⟩  |0⟩|1⟩  |1⟩|0⟩  |1⟩|1⟩          table:        B=0  B=1
+|1⟩|0⟩ =        ( 0       0       1       0 )            A=0   [ 0    0 ]
+                                                           A=1   [ 1    0 ]</pre>
+  <p><b>When each qubit has its own state</b>, every entry is A's entry × B's entry: <span class="m">table[a, b] = A[a] · B[b]</span>. Check it on |1⟩|0⟩: A = (0, 1), B = (1, 0), so table[1, 0] = 1 · 1 = 1 and every other entry has a 0 in it.</p>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) |0⟩|1⟩ as a table</span><span class="grid2"><span></span><span>B=0</span><span>B=1</span><span>A=0</span><input data-ans="0"><input data-ans="1"><span>A=1</span><input data-ans="0"><input data-ans="0"></span></div>
+    <div class="q"><span class="lbl">b) |1⟩|1⟩ as a table</span><span class="grid2"><span></span><span>B=0</span><span>B=1</span><span>A=0</span><input data-ans="0"><input data-ans="0"><span>A=1</span><input data-ans="0"><input data-ans="1"></span></div>
+    <div class="q"><span class="lbl">c) Qubit A is in H|0⟩ = (0.707, 0.707) (from 2b); qubit B is in |0⟩ = (1, 0). Write the two together as a table, using table[a, b] = A[a] · B[b]. Example: table[0, 0] = A[0] · B[0] = 0.707 × 1 = 0.707. We call the answer <b>table P</b> (used again in 4b and 5a).</span><span class="grid2"><span></span><span>B=0</span><span>B=1</span><span>A=0</span><input data-ans="0.707"><input data-ans="0"><span>A=1</span><input data-ans="0.707"><input data-ans="0"></span></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="cnot">
+  <h2>4. CNOT on two qubits</h2>
+  <p>CNOT = "if A is 1, flip B". Picture it the way Qiskit draws it: inputs on the left, outputs on the right.</p>
+<pre>            in            out
+A:  ── A in ──■── A out ──        ■ = control (A)
+              │
+B:  ── B in ──⊕── B out ──        ⊕ = flip B if A is 1</pre>
+  <div class="key"><b>The inputs (left side):</b> when A is 0, B can be 0 or 1; when A is 1, B can be 0 or 1. That is 4 possible inputs: 00, 01, 10, 11.<br><b>The outputs (right side):</b> the same 4 possibilities.<br>The table below lists the inputs across the top (A in first, then B in under it) and the outputs down the side (A out, then B out).</div>
+  <p>Split by qubit, CNOT has 4 legs (A in, B in, A out, B out); as a 2 × 2 grid of small 2 × 2 tables:</p>
+<pre>                                   input A = 0              input A = 1
+                                 input B = 0 or 1         input B = 0 or 1
+                                   B=0     B=1              B=0     B=1
+row: output A = 0, output B = 0  [  1       0  ]          [  0       0  ]
+row: output A = 0, output B = 1  [  0       1  ]          [  0       0  ]
+row: output A = 1, output B = 0  [  0       0  ]          [  0       1  ]
+row: output A = 1, output B = 1  [  0       0  ]          [  1       0  ]
+
+         ↓ read DOWN a column: the row where the 1 sits is the output</pre>
+  <p class="hint">Top = the 4 inputs (input A = the "A in" leg, input B = the "B in" leg). Left = row labels: each row stands for one output (output A = the "A out" leg, output B = the "B out" leg).</p>
+  <div class="key"><b>How to read it:</b> pick an input at the top, then read <b>down that column</b>: the 4 numbers are the output. The labels on the table's left are only row names (which output each row stands for), not "the left of the circuit".</div>
+  <div class="scroll"><table>
+    <tr><th>input (top of the column)</th><th>reading down the column</th><th>output</th></tr>
+    <tr><td>A = 0, B = 0</td><td class="m">1 0 0 0</td><td>|0⟩|0⟩, unchanged</td></tr>
+    <tr><td>A = 0, B = 1</td><td class="m">0 1 0 0</td><td>|0⟩|1⟩, unchanged</td></tr>
+    <tr><td>A = 1, B = 0</td><td class="m">0 0 0 1</td><td>|1⟩|1⟩, B flipped</td></tr>
+    <tr><td>A = 1, B = 1</td><td class="m">0 0 1 0</td><td>|1⟩|0⟩, B flipped</td></tr>
+  </table></div>
+  <div class="key"><b>When the input is a mix</b> (several non-zero entries): output = for each input, (its amount) × (its column), all added up. Example: table P = 0.707 of input 00 + 0.707 of input 10, so the output = 0.707 × column(00) + 0.707 × column(10) = (0.707, 0, 0, 0.707). This is ordinary matrix × vector; reading one column is the case where the input is a single 1.</div>
+  <p>Join A in with the state's A leg and B in with its B leg. Legs left: 2 + 4 − 4 = 2 (A out, B out). <b>Shortcut on the table:</b> leave row A = 0 alone; in row A = 1, swap the two entries.</p>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) CNOT on |1⟩|1⟩</span><span class="grid2"><span></span><span>B=0</span><span>B=1</span><span>A=0</span><input data-ans="0"><input data-ans="0"><span>A=1</span><input data-ans="1"><input data-ans="0"></span></div>
+    <div class="q"><span class="lbl">b) CNOT on table P (from 3c). Call the result <b>table E</b>; it is the famous <b>Bell state</b>: A and B are always found equal.</span><span class="grid2"><span></span><span>B=0</span><span>B=1</span><span>A=0</span><input data-ans="0.707"><input data-ans="0"><span>A=1</span><input data-ans="0"><input data-ans="0.707"></span></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="split">
+  <h2>5. Splitting a table back into two qubits</h2>
+  <p class="key" style="margin:0"><b>Link size = the number of parts.</b> (Both terms are explained in the worked example below.)</p>
+  <p>The chain stores <b>one tensor per qubit</b>, not one big table. <b>A qubit's tensor is not always a 2 × 1 vector. It can also be a matrix (a table).</b> Which one depends on whether the qubit is entangled with its neighbours:</p>
+  <div class="scroll"><table>
+    <tr><th>the qubit is…</th><th>its tensor</th><th>example</th></tr>
+    <tr><td>not entangled</td><td>a 2 × 1 vector</td><td>qubit A in table P: <span class="m">(0.707, 0.707)</span></td></tr>
+    <tr><td>entangled with one neighbour</td><td>a 2 × 2 matrix, one column per part: which value of this qubit goes with which part of the neighbour</td><td>qubit A in the Bell state: <span class="m">[[0.707, 0], [0, 0.707]]</span></td></tr>
+    <tr><td>entangled on both sides (middle of a chain)</td><td>3 indices: left link, its own value, right link</td><td>(section 6) 2 × 2 × 2 = 8 numbers</td></tr>
+  </table></div>
+  <p>So after a two-qubit gate makes a table, we must split it back into one tensor per qubit: given the table, find A and B. That is building (section 3) in reverse. The worked example shows how.</p>
+
+  <div class="key">
+  <h3>Worked example: what a link and its size are</h3>
+  <p><b>1. The setup.</b> Two qubits, A and B. Their joint state is a 2 × 2 table: A's value (0 or 1) picks the row, B's value picks the column.</p>
+  <p><b>2. A table that splits.</b> Some tables are just "A's vector × B's vector": every entry is A[a] · B[b]. How to find them: <b>every row is B times one number</b>, so B = the pattern inside the rows, A = the number each row was multiplied by (ignore the row names; look inside the rows). Example, table P, A = (0.707, 0.707), B = (1, 0):</p>
+<pre>[0.707  0]      row 0 = 0.707 × (1, 0)
+[0.707  0]      row 1 = 0.707 × (1, 0)</pre>
+  <p>Then qubit A is stored as one vector and qubit B as one vector: the whole point of one tensor per qubit.</p>
+  <p><b>3. A table that doesn't split: the Bell state.</b></p>
+<pre>[0.707    0  ]
+[  0    0.707]</pre>
+  <p>The two rows are not multiples of each other (they are <b>linearly independent</b>; the table has <b>rank 2</b>), so no single A × B builds it. That is what <b>entangled</b> means here. But it <b>is</b> the sum of two tables that do split:</p>
+<pre>[0.707 0]   [0   0  ]
+[0     0] + [0 0.707]
+  part 1      part 2       both parts added together form the whole table</pre>
+  <p>Each <b>part</b> is one A-vector × one B-vector:</p>
+<pre>part 1: A = (0.707, 0),  B = (1, 0)
+part 2: A = (0, 0.707),  B = (0, 1)        (the 0.707 may sit on A or on B: only A·B matters)</pre>
+  <p><b>4. How it's stored.</b> Qubit A keeps <b>both</b> its A-vectors side by side: that 2 × 2 is <b>A's tensor</b>. Qubit B keeps both its B-vectors: <b>B's tensor</b>.</p>
+<pre>A's tensor:   part 1  part 2        B's tensor:        b=0  b=1
+       a=0  [ 0.707     0   ]              part 1   [  1    0 ]
+       a=1  [   0     0.707 ]              part 2   [  0    1 ]</pre>
+  <p>Rebuild the table: match part 1 with part 1 and part 2 with part 2, multiply, add. That is matrix × matrix:</p>
+<pre>[0.707   0  ]   [1 0]     [0.707   0  ]
+[  0  0.707 ] × [0 1]  =  [  0  0.707 ]   ✓ the Bell table</pre>
+  <p><b>5. Link and size.</b> <b>Link</b> = the "which part" label. Both tensors carry it; it is what ties A to B. <b>Size</b> = how many parts = how many values that label can take: Bell 2, table P 1. Picture the link as a pipe between A and B, one lane per part: more lanes = bigger link = more entanglement carried = more numbers stored.</p>
+  <p><b>6. The price.</b> Entangled, a qubit's tensor grows from a vector into a matrix (one vector per part). How big it can get is counted step by step in the purple card in section 6.</p>
+  </div>
+
+  <div class="ex">
+    <div class="q"><span class="lbl">a) Split table P with B = (1, 0). Then A = (?, ?)</span><input data-ans="0.707"><input data-ans="0.707"></div>
+    <div class="q"><span class="lbl">b) Link size of |0⟩|1⟩</span><input data-ans="1"></div>
+    <div class="q"><span class="lbl">c) Link size of table P</span><input data-ans="1"></div>
+    <div class="q"><span class="lbl">d) Link size of the Bell state (table E)</span><input data-ans="2"></div>
+    <div class="q"><span class="lbl">e) The 0.707 on B instead: A's tensor = [[1,0],[0,1]], B's tensor = [[0.707,0],[0,0.707]]. Join the link (matrix product). Entry [1,1] = ?</span><input data-ans="0.707"></div>
+  </div>
+  <p class="hint">A computer finds the parts automatically, biggest first, with the SVD from your notes.</p>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="chain">
+  <h2>6. The chain</h2>
+  <p>Many qubits in a row. Each qubit tensor has <b>3 legs</b>: left link, qubit leg, right link. At the start (every qubit in its own state) every link has size 1.</p>
+  <div class="count">
+    <h3>Counting: how big can one qubit's tensor get?</h3>
+    <p><b>Setup:</b> 10 qubits in a row. Look at <b>qubit 5</b>. Its tensor has 3 indices: the left link, its own value, the right link.</p>
+<pre>[ 1  2  3  4 ]  —  5  —  [ 6  7  8  9  10 ]
+   left side      itself       right side</pre>
+    <p><b>Left link</b> (between qubits 4 and 5): on its left are qubits 1–4. They have 2⁴ = <b>16</b> combinations, so the left link needs <b>at most 16 parts</b>.</p>
+    <p><b>Qubit 5 itself:</b> <b>2</b> options (0 or 1).</p>
+    <p><b>Right link</b> (between qubits 5 and 6): on its right are qubits 6–10. They have 2⁵ = <b>32</b> combinations, so the right link needs <b>at most 32 parts</b>.</p>
+    <p><b>Qubit 5's tensor, at most:</b> 16 × 2 × 32 = <b>1024 numbers</b>. That is the same as 2¹⁰ = 1024 for the whole 10-qubit table: for 10 fully entangled qubits the chain saves nothing.</p>
+    <p class="rule">Left link ≤ 2^(number of qubits on the left).<br>Right link ≤ 2^(number of qubits on the right).<br>The qubit itself adds a factor of 2.</p>
+    <p><b>Where the saving comes from:</b></p>
+    <p>1. Real states are usually much less entangled than the maximum: links need far fewer parts than 16 or 32, so tensors stay small.<br>
+    2. The cap. At 40 qubits the middle link could need up to 2²⁰ ≈ 1 million parts; we allow at most <b>1024</b> (max_bond) and trim the rest. Then each tensor is at most 1024 × 2 × 1024 ≈ 2 million numbers, and 40 of them ≈ <b>84 million</b> numbers replace one table of 2⁴⁰ ≈ <b>1.1 trillion</b>, at the price of a little fidelity.</p>
+  </div>
+  <div class="scroll"><svg viewBox="0 0 640 120" width="640" height="120" role="img" aria-label="Chain of four qubit tensors joined by links, each with a qubit leg"><g id="chainsvg"></g></svg></div>
+  <p><b>A two-qubit gate on neighbours A and B</b>, three moves:</p>
+  <div class="scroll"><table>
+    <tr><th>move</th><th>what happens</th><th>legs</th></tr>
+    <tr><td>1 Join A and B</td><td>along the link between them</td><td class="m">3 + 3 − 2 = 4: left link, A, B, right link</td></tr>
+    <tr><td>2 Apply the gate</td><td>its 2 in legs join A and B</td><td class="m">4 + 4 − 4 = 4: same legs, new numbers</td></tr>
+    <tr><td>3 Split</td><td>into parts, as in section 5</td><td class="m">two qubit tensors, 3 legs each; the link between them may now be <b>bigger</b></td></tr>
+  </table></div>
+  <p>One-qubit gates never make a link bigger (section 2: only the qubit leg is touched). Two-qubit gates can, and the link sizes grow gate after gate.</p>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) In a chain, qubit A in H|0⟩ and B in |0⟩, apply CNOT to A, B. Size of the link between them after the split?</span><input data-ans="2"></div>
+    <div class="q"><span class="lbl">b) A qubit tensor with left link size 4, right link size 4 holds 4 × 2 × 4 numbers = ?</span><input data-ans="32"></div>
+    <div class="q"><span class="lbl">c) Same with both link sizes 1024: how many numbers? (exact)</span><input data-ans="2097152" data-tol="1" style="width:110px"></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="trim">
+  <h2>7. Trimming</h2>
+  <p>Each part has a <b>weight</b> (the number in front of it); for a proper state the weights squared add up to 1. Example:</p>
+<pre>table  =  [0.99  0    ]  =  0.99 × part 1  +  0.141 × part 2       0.99² + 0.141² = 0.98 + 0.02 = 1
+          [0     0.141]</pre>
+  <p><b>Trimming</b>: drop the smallest parts so the link stays small (here size 2 → 1). We keep [[0.99, 0], [0, 0]] and rescale it to [[1, 0], [0, 0]]. The price: the kept state matches the original only by <b>1 − (dropped weight)²</b>. That number is the fidelity (section 8).</p>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) Fidelity after dropping the 0.141 part</span><input data-ans="0.98"></div>
+    <div class="q"><span class="lbl">b) Fidelity if the dropped part had weight 0.1</span><input data-ans="0.99"></div>
+  </div>
+  <div class="key">This is what <b>max_bond</b> means in our runs: the largest link size allowed. 1024 for the target, 512 in training. Anything beyond it is trimmed.</div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="overlap">
+  <h2>8. Overlap and fidelity</h2>
+  <p><b>Overlap</b> of two states = join <b>every</b> leg of one with the matching leg of the other: multiply entry by entry, add all up. Nothing is left over: the answer is one number. <b>Fidelity</b> = overlap². 1 means identical, 0 means completely different.</p>
+<pre>two qubits:  overlap = Σ over a, b of  T[a, b] · ψ[a, b]          (real numbers here)</pre>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) Overlap of table E with |0⟩|0⟩</span><input data-ans="0.707"></div>
+    <div class="q"><span class="lbl">b) Their fidelity</span><input data-ans="0.5"></div>
+    <div class="q"><span class="lbl">c) Overlap of table E with itself</span><input data-ans="1"></div>
+  </div>
+  <p><b>In the chain</b> you never build the big table: you zip the two chains from left to right, joining qubit legs and links as you go, carrying one small running table. When every qubit has its own state, the overlap is just the product of the one-qubit overlaps.</p>
+  <div class="ex">
+    <div class="q"><span class="lbl">d) Overlap of (H|0⟩)|0⟩|0⟩ with |0⟩|0⟩|0⟩ (three qubits)</span><input data-ans="0.707"></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="runs">
+  <h2>9. What this means for our runs</h2>
+  <div class="scroll"><table>
+    <tr><th>in a summary.md</th><th>in this workbook</th></tr>
+    <tr><td class="m">40 qubits</td><td>a chain of 40 qubit tensors, 3 legs each</td></tr>
+    <tr><td class="m">target max_bond=1024</td><td>largest link size while building the target; bigger gets trimmed</td></tr>
+    <tr><td class="m">training max_bond=512</td><td>the same, while training</td></tr>
+    <tr><td class="m">norm violation 0.025</td><td>roughly how much trimming threw away (we want under 0.01)</td></tr>
+    <tr><td class="m">fidelity 0.996</td><td>overlap² of the trained circuit's state with the target</td></tr>
+    <tr><td class="m">RAM</td><td>grows with link size²: 2 million numbers per qubit tensor at link size 1024 (6c)</td></tr>
+  </table></div>
+  <p class="hint">Next: backprop through a circuit. The knobs are gate angles, L = 1 − fidelity, and the backward pass reuses earlier results exactly like ∂L/∂z₁ in the Backprop Workbook.</p>
+</section>
+</main>
+</div>
+
+<script>
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function drawLegs(){
+  const ink=css('--ink'),mu=css('--muted'),nd=css('--node'),ac=css('--acc');let g='';
+  const t=(x,y,s,c,sz=12)=>g+=`<text x="${x}" y="${y}" text-anchor="middle" font-size="${sz}" fill="${c}">${s}</text>`;
+  const node=(x,y,lab)=>{g+=`<circle cx="${x}" cy="${y}" r="20" fill="${nd}" stroke="${ink}" stroke-width="1.5"/>`;t(x,y+4,lab,ink,13);};
+  const leg=(x1,y1,x2,y2,lab,lx,ly)=>{g+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${ac}" stroke-width="2.5"/>`;t(lx,ly,lab,ac,11);};
+  leg(100,90,100,130,'entry',100,145); node(100,70,'|0⟩'); t(100,30,'list: 1 leg',mu);
+  leg(300,90,300,130,'row',300,145); leg(320,70,370,70,'column',385,60); node(300,70,'X'); t(300,30,'table: 2 legs',mu);
+  leg(500,90,500,130,'qubit',500,145); leg(480,70,430,70,'left',430,60); leg(520,70,570,70,'right',570,60); node(500,70,'q'); t(500,30,'qubit tensor: 3 legs',mu);
+  document.getElementById('legsvg').innerHTML=g;
+}
+function drawChain(){
+  const ink=css('--ink'),mu=css('--muted'),nd=css('--node'),ac=css('--acc');let g='';
+  const xs=[110,250,390,530];
+  g+=`<line x1="60" y1="50" x2="580" y2="50" stroke="${ac}" stroke-width="2.5"/>`;
+  [[180,'link'],[320,'link'],[460,'link']].forEach(([x,l])=>g+=`<text x="${x}" y="40" text-anchor="middle" font-size="11" fill="${ac}">${l}</text>`);
+  xs.forEach((x,i)=>{g+=`<line x1="${x}" y1="70" x2="${x}" y2="100" stroke="${ac}" stroke-width="2.5"/><circle cx="${x}" cy="50" r="20" fill="${nd}" stroke="${ink}" stroke-width="1.5"/><text x="${x}" y="54" text-anchor="middle" font-size="13" fill="${ink}">q${i+1}</text><text x="${x}" y="114" text-anchor="middle" font-size="11" fill="${mu}">qubit ${i+1}</text>`;});
+  document.getElementById('chainsvg').innerHTML=g;
+}
+function mark(sec){sec.querySelectorAll('.q').forEach(q=>{const ins=[...q.querySelectorAll('input[data-ans]')];q.classList.remove('ok','no');
+  if(ins.every(i=>!i.value.trim()))return;
+  const ok=ins.every(i=>{const v=parseFloat(i.value.replace('−','-'));return !isNaN(v)&&Math.abs(v-parseFloat(i.dataset.ans))<=parseFloat(i.dataset.tol||'0.01');});
+  q.classList.add(ok?'ok':'no');});}
+document.querySelectorAll('[data-check]').forEach(b=>b.onclick=()=>mark(b.closest('section')));
+document.querySelectorAll('[data-reveal]').forEach(b=>b.onclick=()=>{const s=b.closest('section');s.querySelectorAll('input[data-ans]').forEach(i=>i.value=i.dataset.ans);mark(s);});
+// Auto-save answers in this browser, so a reload or a new version of the page keeps them
+const allIns=[...document.querySelectorAll('input[data-ans]')];
+allIns.forEach((inp,i)=>{inp.dataset.k='t'+i;});
+const SAVE='tensor-workbook-answers';
+function save(){try{const o={};allIns.forEach(i=>{if(i.value.trim())o[i.dataset.k]=i.value;});localStorage.setItem(SAVE,JSON.stringify(o));}catch(e){}}
+function restore(){try{const o=JSON.parse(localStorage.getItem(SAVE)||'{}');allIns.forEach(i=>{if(o[i.dataset.k]!=null)i.value=o[i.dataset.k];});
+  document.querySelectorAll('section').forEach(s=>{if(s.querySelector('input[data-ans]'))mark(s);});}catch(e){}}
+allIns.forEach(i=>i.addEventListener('input',save));
+document.querySelectorAll('[data-reveal]').forEach(b=>b.addEventListener('click',save));
+restore();
+function draw(){drawLegs();drawChain();}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+draw();
+</script>
+</body>
+</html>

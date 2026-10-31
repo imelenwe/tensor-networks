@@ -2,6 +2,9 @@
 
 Exercises and notes following the [tensors.net](https://www.tensors.net) Python tutorial series.
 
+**Learn pages (GitHub Pages):** https://imelenwe.github.io/tensor-networks/learn/ — start with the
+[Tensor Chain Workbook](https://imelenwe.github.io/tensor-networks/learn/tensor-chain-workbook.html).
+
 ## Contents
 
 _(to be filled in as exercises are added)_
