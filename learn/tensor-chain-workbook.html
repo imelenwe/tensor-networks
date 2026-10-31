@@ -26,6 +26,8 @@
   nav ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
   nav a{display:block; padding:5px 8px; border-radius:6px; color:var(--ink); text-decoration:none; font-size:14px}
   nav a:hover{background:var(--node)}
+  nav li.sub a{padding-left:22px; font-size:13px; color:var(--muted)}
+  nav li.sub a:hover{color:var(--ink)}
   @media (max-width:600px){ .layout{grid-template-columns:1fr} nav{top:0; z-index:2; padding:8px} nav p{display:none}
     nav ol{flex-direction:row; overflow-x:auto} nav a{white-space:nowrap} }
   main{display:flex; flex-direction:column; gap:18px; min-width:0}
@@ -72,9 +74,10 @@
     <li><a href="#cnot">4 · CNOT</a></li>
     <li><a href="#split">5 · Splitting a table</a></li>
     <li><a href="#chain">6 · The chain</a></li>
-    <li><a href="#trim">7 · Trimming</a></li>
-    <li><a href="#overlap">8 · Overlap and fidelity</a></li>
-    <li><a href="#runs">9 · What this means for our runs</a></li>
+    <li class="sub"><a href="#counting">How big a qubit tensor gets</a></li>
+    <li class="sub"><a href="#saving">Where the saving comes from</a></li>
+    <li><a href="#trim">7 · Trimming and fidelity</a></li>
+    <li><a href="#runs">8 · What this means for our runs</a></li>
   </ol>
 </nav>
 <main>
@@ -98,7 +101,7 @@
     <div><dt>Link</dt> <dd>= the shared "which part" index between two neighbouring qubit tensors (section 5).</dd></div>
     <div><dt>Link size</dt> <dd>= the number of parts = how many values the link index can take = the rank (section 5).</dd></div>
     <div><dt>Trimming</dt> <dd>= dropping the smallest parts so a link stays small (section 7).</dd></div>
-    <div><dt>Overlap, fidelity</dt> <dd>= how alike two states are; fidelity = overlap² (section 8).</dd></div>
+    <div><dt>Overlap, fidelity</dt> <dd>= how alike two states are; fidelity = overlap² (section 7).</dd></div>
   </dl>
 </section>
 
@@ -235,8 +238,8 @@ part 2: A = (0, 0.707),  B = (0, 1)        (the 0.707 may sit on A or on B: only
 
 <section id="chain">
   <h2>6. The chain</h2>
-  <p>Many qubits in a row. Each qubit tensor has <b>3 legs</b>: left link, qubit leg, right link. At the start (every qubit in its own state) every link has size 1.</p>
-  <div class="count">
+  <p>Many qubits in a row, one tensor per qubit. A qubit in the middle has <b>3 legs</b>: the link to its left neighbour, its own value, the link to its right neighbour. At the start (every qubit in its own state) every link has size 1.</p>
+  <div class="count" id="counting" style="scroll-margin-top:16px">
     <h3>Counting: how big can one qubit's tensor get?</h3>
     <p><b>Setup:</b> 10 qubits in a row. Look at <b>qubit 5</b>. Its tensor has 3 indices: the left link, its own value, the right link.</p>
 <pre>[ 1  2  3  4 ]  —  5  —  [ 6  7  8  9  10 ]
@@ -246,18 +249,34 @@ part 2: A = (0, 0.707),  B = (0, 1)        (the 0.707 may sit on A or on B: only
     <p><b>Right link</b> (between qubits 5 and 6): on its right are qubits 6–10. They have 2⁵ = <b>32</b> combinations, so the right link needs <b>at most 32 parts</b>.</p>
     <p><b>Qubit 5's tensor, at most:</b> 16 × 2 × 32 = <b>1024 numbers</b>. That is the same as 2¹⁰ = 1024 for the whole 10-qubit table: for 10 fully entangled qubits the chain saves nothing.</p>
     <p class="rule">Left link ≤ 2^(number of qubits on the left).<br>Right link ≤ 2^(number of qubits on the right).<br>The qubit itself adds a factor of 2.</p>
-    <p><b>Where the saving comes from:</b></p>
+    <h3 id="saving" style="scroll-margin-top:16px">Where the saving comes from</h3>
     <p>1. Real states are usually much less entangled than the maximum: links need far fewer parts than 16 or 32, so tensors stay small.<br>
     2. The cap. At 40 qubits the middle link could need up to 2²⁰ ≈ 1 million parts; we allow at most <b>1024</b> (max_bond) and trim the rest. Then each tensor is at most 1024 × 2 × 1024 ≈ 2 million numbers, and 40 of them ≈ <b>84 million</b> numbers replace one table of 2⁴⁰ ≈ <b>1.1 trillion</b>, at the price of a little fidelity.</p>
   </div>
-  <div class="scroll"><svg viewBox="0 0 640 120" width="640" height="120" role="img" aria-label="Chain of four qubit tensors joined by links, each with a qubit leg"><g id="chainsvg"></g></svg></div>
-  <p><b>A two-qubit gate on neighbours A and B</b>, three moves:</p>
-  <div class="scroll"><table>
-    <tr><th>move</th><th>what happens</th><th>legs</th></tr>
-    <tr><td>1 Join A and B</td><td>along the link between them</td><td class="m">3 + 3 − 2 = 4: left link, A, B, right link</td></tr>
-    <tr><td>2 Apply the gate</td><td>its 2 in legs join A and B</td><td class="m">4 + 4 − 4 = 4: same legs, new numbers</td></tr>
-    <tr><td>3 Split</td><td>into parts, as in section 5</td><td class="m">two qubit tensors, 3 legs each; the link between them may now be <b>bigger</b></td></tr>
-  </table></div>
+  <div class="scroll"><svg viewBox="0 0 640 120" width="640" height="120" role="img" aria-label="Chain of four qubits: qubit 1, A (qubit 2), B (qubit 3), qubit 4, joined by links of size 1"><g id="chainsvg"></g></svg></div>
+  <div class="key">
+  <h3>Worked example: what a two-qubit gate does to the chain</h3>
+  <p><b>The question:</b> the chain keeps one tensor per qubit. But a two-qubit gate, like CNOT, needs to see <b>both</b> qubits at once. How do we apply it and still end up with one tensor per qubit?</p>
+  <p><b>The answer, in three moves:</b> glue the two qubits into one table, apply the gate to that table, cut the table back into two tensors.</p>
+  <p><b>Setup</b> (the picture above): 4 qubits in a row. We apply CNOT to the middle two, which we call <b>A</b> (qubit 2) and <b>B</b> (qubit 3). Their states: A = H|0⟩ = (0.707, 0.707), B = |0⟩ = (1, 0); qubits 1 and 4 are |0⟩. Nothing is entangled yet, so every link has size 1 (one part).</p>
+<pre>before:   q1 —(size 1)— A —(size 1)— B —(size 1)— q4</pre>
+  <p><b>Move 1, glue A and B.</b> Join A's tensor and B's tensor along the link between them. Because that link has size 1, this is just "A × B" from section 3, which gives <b>table P</b>:</p>
+<pre>          B=0    B=1
+A=0    [ 0.707    0  ]
+A=1    [ 0.707    0  ]</pre>
+  <p class="hint">Legs: A had 3 (left link, A's value, link to B), B had 3 (link to A, B's value, right link). Gluing joins the shared link: 3 + 3 − 2 = 4 legs: left link, A's value, B's value, right link.</p>
+  <p><b>Move 2, apply CNOT to the table</b> (section 4): leave row A = 0 alone, swap the entries in row A = 1. Result: the <b>Bell state</b>.</p>
+<pre>          B=0    B=1
+A=0    [ 0.707    0    ]
+A=1    [   0    0.707  ]</pre>
+  <p class="hint">Legs: CNOT's 2 in legs join A's value and B's value; its 2 out legs take their place: 4 + 4 − 4 = 4 legs, same as before, new numbers.</p>
+  <p><b>Move 3, cut it back into A and B</b> (section 5). The rows are linearly independent (rank 2), so it takes <b>2 parts</b>:</p>
+<pre>A's tensor:   part 1  part 2        B's tensor:        B=0  B=1
+       A=0  [ 0.707     0   ]              part 1   [  1    0 ]
+       A=1  [   0     0.707 ]              part 2   [  0    1 ]</pre>
+<pre>after:    q1 —(size 1)— A —(size 2)— B —(size 1)— q4</pre>
+  <p><b>What changed:</b> still one tensor per qubit, but the link between A and B grew from size 1 to <b>size 2</b>, because CNOT entangled them. The other links did not change.</p>
+  </div>
   <p>One-qubit gates never make a link bigger (section 2: only the qubit leg is touched). Two-qubit gates can, and the link sizes grow gate after gate.</p>
   <div class="ex">
     <div class="q"><span class="lbl">a) In a chain, qubit A in H|0⟩ and B in |0⟩, apply CNOT to A, B. Size of the link between them after the split?</span><input data-ans="2"></div>
@@ -268,45 +287,93 @@ part 2: A = (0, 0.707),  B = (0, 1)        (the 0.707 may sit on A or on B: only
 </section>
 
 <section id="trim">
-  <h2>7. Trimming</h2>
-  <p>Each part has a <b>weight</b> (the number in front of it); for a proper state the weights squared add up to 1. Example:</p>
-<pre>table  =  [0.99  0    ]  =  0.99 × part 1  +  0.141 × part 2       0.99² + 0.141² = 0.98 + 0.02 = 1
-          [0     0.141]</pre>
-  <p><b>Trimming</b>: drop the smallest parts so the link stays small (here size 2 → 1). We keep [[0.99, 0], [0, 0]] and rescale it to [[1, 0], [0, 0]]. The price: the kept state matches the original only by <b>1 − (dropped weight)²</b>. That number is the fidelity (section 8).</p>
+  <h2>7. Trimming, and how alike two states are</h2>
+  <div class="key">
+  <h3>Worked example, part 1: trimming a link</h3>
+  <p><b>The question:</b> section 6 showed that every two-qubit gate can make a link bigger, and the counting card showed a middle link of 40 qubits could need up to 2²⁰ ≈ 1 million parts. We can't store that. So we keep only the <b>most important parts</b> and throw the rest away. That is <b>trimming</b>. What does it cost us?</p>
+  <p><b>Setup: the same three moves as in section 6, with one change.</b> Before, A was H|0⟩ = (0.707, 0.707), an even mix of 0 and 1. Now A is <b>mostly 0</b>: A = (0.99, 0.141). (A proper state's numbers squared add up to 1: 0.99² + 0.141² = 0.98 + 0.02 = 1.) B = |0⟩ = (1, 0) as before.</p>
+  <p><b>Move 1, glue:</b> table[a, b] = A[a] · B[b]:</p>
+<pre>          B=0    B=1
+A=0    [ 0.99     0  ]
+A=1    [ 0.141    0  ]</pre>
+  <p><b>Move 2, CNOT:</b> swap the entries in row A = 1:</p>
+<pre>          B=0    B=1
+A=0    [ 0.99     0    ]
+A=1    [  0     0.141  ]</pre>
+  <p><b>Move 3, cut:</b> the rows are linearly independent, so 2 parts, link size 2. Write each part as a number times a table with a single 1:</p>
+<pre>[0.99    0  ]  =  0.99 × [1 0]  +  0.141 × [0 0]
+[ 0   0.141 ]            [0 0]             [0 1]
+                       part 1             part 2</pre>
+  <p>The number in front of each part is its <b>weight</b>: how much of the whole state that part carries. Square it to get a percentage: 0.99² = 0.98 = <b>98 %</b>, 0.141² = 0.02 = <b>2 %</b>; together 100 %.</p>
+  <p><b>Trim:</b> keep only the biggest part, drop part 2. What is left is [[0.99, 0], [0, 0]]. Its numbers squared add up to 0.98, not 1, so we <b>rescale</b> (divide by 0.99) to make it a proper state again: [[1, 0], [0, 0]] = |0⟩|0⟩. The link between A and B is back to <b>size 1</b>: A and B are plain vectors again.</p>
+  </div>
+
+  <div class="key">
+  <h3>Worked example, part 2: how alike are two states? (overlap and fidelity)</h3>
+  <p><b>The question:</b> we threw part 2 away. How close is what we kept to the real state? We need <b>one number</b> that says how alike two states are.</p>
+  <p><b>Step 1, line them up.</b> Each state is 4 numbers, one per combination of A and B. Write the two states side by side:</p>
+  <div class="scroll"><table>
+    <tr><th>combination (A, B)</th><th>real state</th><th>trimmed state</th><th>real × trimmed</th></tr>
+    <tr><td class="m">0, 0</td><td class="m">0.99</td><td class="m">1</td><td class="m">0.99</td></tr>
+    <tr><td class="m">0, 1</td><td class="m">0</td><td class="m">0</td><td class="m">0</td></tr>
+    <tr><td class="m">1, 0</td><td class="m">0</td><td class="m">0</td><td class="m">0</td></tr>
+    <tr><td class="m">1, 1</td><td class="m">0.141</td><td class="m">0</td><td class="m">0</td></tr>
+    <tr><th>add up the last column</th><td></td><td></td><td class="m"><b>0.99</b></td></tr>
+  </table></div>
+  <p><b>Step 2, multiply each row, add the products.</b> That sum, 0.99, is the <b>overlap</b>. It is the same "multiply matching entries and add up" as every join on this page, with every index joined, so one number is left.</p>
+  <p><b>Why this measures alikeness:</b> a combination only adds something if <b>both</b> states have it. Both have (0, 0), so it counts. (1, 1) exists only in the real state, so it adds 0. Two quick checks:</p>
+  <p>· the real state with itself: 0.99 × 0.99 + 0.141 × 0.141 = 0.98 + 0.02 = <b>1</b> → identical.<br>· |0⟩|0⟩ with |1⟩|1⟩: no combination in common → <b>0</b> → nothing alike.</p>
+  <p><b>Step 3, square it: fidelity = overlap².</b> Squared for the same reason the weights were: the numbers in a quantum state become percentages when squared. Fidelity 0.99² = <b>0.98</b>: the trimmed state matches the real one <b>98 %</b>.</p>
+  <p><b>The price of trimming:</b> 0.98 = 1 − 0.141² = 1 − 0.02. We lost exactly the 2 % that the dropped part carried.</p>
+  <p style="font-size:17px;font-weight:600">Trimming keeps the biggest parts. The fidelity lost = the dropped parts' percentages (weights squared), added up.</p>
+  <p><b>When trimming is cheap and when it isn't:</b> here the dropped part carried 2 %, so we lost 2 %. The <b>Bell state</b>'s two parts have equal weights, 0.707 and 0.707, each 50 %; dropping one leaves fidelity 0.5.</p>
+  <p><b>In a long chain</b> you never write out the big table: you zip the two chains from left to right, joining qubit legs and links as you go, carrying one small running table. When every qubit has its own state, the overlap is just the one-qubit overlaps multiplied together.</p>
+  </div>
+  <div class="key">
+  <h3>Do we rescale after trimming? And is the circuit still a proper state?</h3>
+  <p><b>Rescale: no, not in our runs.</b> On a classical computer a state whose squares add up to 0.975 is fine to store. Leaving it un-rescaled keeps a record of how much trimming threw away: that is the <b>norm violation</b> in every summary.md (0.0000 for the x = 100 targets; 0.025 for the 40-qubit x = 200 vacuum target, i.e. 2.5 % dropped).</p>
+  <p><b>The circuit itself is never trimmed.</b> Trimming happens only inside the laptop's simulation:</p>
+  <div class="scroll"><table>
+    <tr><th>thing</th><th>what it is</th><th>trimmed?</th></tr>
+    <tr><td>the trained circuit</td><td>a list of gates with angles</td><td><b>no</b>: just instructions</td></tr>
+    <tr><td>the target</td><td>the laptop's chain copy of the long Trotter circuit's state</td><td>yes (max_bond 1024)</td></tr>
+    <tr><td>the trained circuit's simulated state</td><td>the laptop's chain copy, used to compute fidelity in training</td><td>yes (max_bond 512)</td></tr>
+  </table></div>
+  <p>On a quantum computer every gate keeps the squares adding up to 1, so the trained circuit <b>always makes a proper quantum state</b>, with nothing thrown away. Trimming only limits how accurately the laptop <b>measures</b> its fidelity. Example: the same 40-qubit x = 200 vacuum circuit read 0.36 when rechecked at max_bond 512 and 0.78 at 1024: same circuit, different amounts of trimming in the measurement.</p>
+  <p><b>So what does fidelity measure?</b> The full Trotter circuit (deep: 2500 CNOTs at 40 qubits) would make the state we actually want. The compressed circuit (shallow: 1120 CNOTs) makes its <b>own</b> proper quantum state, slightly different. <b>Fidelity = how alike those two states are</b>: 0.996 means 99.6 % alike, a 0.4 % difference.</p>
+  <div class="scroll"><table>
+    <tr><th>source</th><th>what it does</th></tr>
+    <tr><td><b>compression</b> (shallow circuit)</td><td>the real, small difference between the two states. This is what fidelity is meant to measure.</td></tr>
+    <tr><td><b>trimming on the laptop</b></td><td>only makes our <i>measurement</i> of that fidelity less exact; it does not change either circuit</td></tr>
+    <tr><td><b>noise on real hardware</b></td><td>every CNOT adds errors. This is why we compress: 1120 CNOTs are far less noisy than 2500, so the small 0.4 % we give up buys back much more than it costs.</td></tr>
+  </table></div>
+  </div>
   <div class="ex">
     <div class="q"><span class="lbl">a) Fidelity after dropping the 0.141 part</span><input data-ans="0.98"></div>
     <div class="q"><span class="lbl">b) Fidelity if the dropped part had weight 0.1</span><input data-ans="0.99"></div>
+    <div class="q"><span class="lbl">c) Overlap of the Bell state [[0.707, 0], [0, 0.707]] with |0⟩|0⟩ (line them up, multiply, add)</span><input data-ans="0.707"></div>
+    <div class="q"><span class="lbl">d) Their fidelity</span><input data-ans="0.5"></div>
+    <div class="q"><span class="lbl">e) Overlap of the Bell state with itself</span><input data-ans="1"></div>
+    <div class="q"><span class="lbl">f) Overlap of (H|0⟩)|0⟩|0⟩ with |0⟩|0⟩|0⟩ (three qubits)</span><input data-ans="0.707"></div>
   </div>
-  <div class="key">This is what <b>max_bond</b> means in our runs: the largest link size allowed. 1024 for the target, 512 in training. Anything beyond it is trimmed.</div>
+  <div class="key"><b>In our runs:</b> <b>max_bond</b> = how many parts each link may keep: the 1024 biggest while building the target, the 512 biggest in training; the rest are trimmed. The <b>fidelity</b> in a summary.md (e.g. 0.996) is overlap² of the trained circuit's state with the target. The <b>norm violation</b> is roughly the total percentage trimming threw away: 0.025 means about 2.5 %, more than the 1 % we accept.</div>
   <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
 </section>
 
-<section id="overlap">
-  <h2>8. Overlap and fidelity</h2>
-  <p><b>Overlap</b> of two states = join <b>every</b> leg of one with the matching leg of the other: multiply entry by entry, add all up. Nothing is left over: the answer is one number. <b>Fidelity</b> = overlap². 1 means identical, 0 means completely different.</p>
-<pre>two qubits:  overlap = Σ over a, b of  T[a, b] · ψ[a, b]          (real numbers here)</pre>
-  <div class="ex">
-    <div class="q"><span class="lbl">a) Overlap of table E with |0⟩|0⟩</span><input data-ans="0.707"></div>
-    <div class="q"><span class="lbl">b) Their fidelity</span><input data-ans="0.5"></div>
-    <div class="q"><span class="lbl">c) Overlap of table E with itself</span><input data-ans="1"></div>
-  </div>
-  <p><b>In the chain</b> you never build the big table: you zip the two chains from left to right, joining qubit legs and links as you go, carrying one small running table. When every qubit has its own state, the overlap is just the product of the one-qubit overlaps.</p>
-  <div class="ex">
-    <div class="q"><span class="lbl">d) Overlap of (H|0⟩)|0⟩|0⟩ with |0⟩|0⟩|0⟩ (three qubits)</span><input data-ans="0.707"></div>
-  </div>
-  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
-</section>
+
 
 <section id="runs">
-  <h2>9. What this means for our runs</h2>
+  <h2>8. What this means for our runs</h2>
+  <p>Each line of a 40-qubit summary.md, in this workbook's words.</p>
   <div class="scroll"><table>
-    <tr><th>in a summary.md</th><th>in this workbook</th></tr>
-    <tr><td class="m">40 qubits</td><td>a chain of 40 qubit tensors, 3 legs each</td></tr>
-    <tr><td class="m">target max_bond=1024</td><td>largest link size while building the target; bigger gets trimmed</td></tr>
-    <tr><td class="m">training max_bond=512</td><td>the same, while training</td></tr>
-    <tr><td class="m">norm violation 0.025</td><td>roughly how much trimming threw away (we want under 0.01)</td></tr>
-    <tr><td class="m">fidelity 0.996</td><td>overlap² of the trained circuit's state with the target</td></tr>
-    <tr><td class="m">RAM</td><td>grows with link size²: 2 million numbers per qubit tensor at link size 1024 (6c)</td></tr>
+    <tr><th>in a summary.md</th><th>what it means</th></tr>
+    <tr><td class="m">40 qubits</td><td>A chain of 40 qubit tensors. Each qubit by itself has only 2 values (0 or 1). Take qubit 20 in the middle: its left link stands for qubits 1–19, up to 2¹⁹ ≈ 524,000 parts; its right link stands for qubits 21–40, up to 2²⁰ ≈ 1 million parts (counting card, section 6).</td></tr>
+    <tr><td class="m">target max_bond=1024</td><td>The <b>target</b> is the state of the full, deep <b>Trotter circuit</b> (11 Trotter steps): the state we want the short circuit to copy. It is built once on the laptop, and every link is trimmed to its 1024 biggest parts.</td></tr>
+    <tr><td class="m">training max_bond=512</td><td><b>Training</b> tunes the angles of the short compressed circuit (5 steps) until its state matches the target. Its state is simulated again at every one of hundreds of training steps, so each simulation must be cheap; and a short circuit makes less entanglement, so its links need fewer parts. Hence the smaller cap of 512 (halving the link size makes each simulation roughly 8 times cheaper).</td></tr>
+    <tr><td class="m">recheck at max_bond=1024</td><td>After training, the circuit's state is simulated again with the bigger cap. If the fidelity barely moves (x = 100: 0.996189 at both 512 and 1024), 512 was enough.</td></tr>
+    <tr><td class="m">norm violation 0.025</td><td>How much trimming threw away while building the target: 0.025 ≈ 2.5 %. We accept under 1 %.</td></tr>
+    <tr><td class="m">fidelity 0.996</td><td>How alike the short circuit's state and the Trotter circuit's state are: 99.6 % (section 7).</td></tr>
+    <tr><td class="m">RAM</td><td>Grows with link size²: at link size 1024 a middle qubit tensor holds 1024 × 2 × 1024 ≈ 2 million numbers.</td></tr>
   </table></div>
   <p class="hint">Next: backprop through a circuit. The knobs are gate angles, L = 1 − fidelity, and the backward pass reuses earlier results exactly like ∂L/∂z₁ in the Backprop Workbook.</p>
 </section>
@@ -326,11 +393,11 @@ function drawLegs(){
   document.getElementById('legsvg').innerHTML=g;
 }
 function drawChain(){
-  const ink=css('--ink'),mu=css('--muted'),nd=css('--node'),ac=css('--acc');let g='';
-  const xs=[110,250,390,530];
+  const ink=css('--ink'),mu=css('--muted'),nd=css('--node'),ac=css('--acc'),wm=css('--warm');let g='';
+  const xs=[110,250,390,530],lab=['q1','A','B','q4'],sub=['qubit 1','qubit 2 = A','qubit 3 = B','qubit 4'];
   g+=`<line x1="60" y1="50" x2="580" y2="50" stroke="${ac}" stroke-width="2.5"/>`;
-  [[180,'link'],[320,'link'],[460,'link']].forEach(([x,l])=>g+=`<text x="${x}" y="40" text-anchor="middle" font-size="11" fill="${ac}">${l}</text>`);
-  xs.forEach((x,i)=>{g+=`<line x1="${x}" y1="70" x2="${x}" y2="100" stroke="${ac}" stroke-width="2.5"/><circle cx="${x}" cy="50" r="20" fill="${nd}" stroke="${ink}" stroke-width="1.5"/><text x="${x}" y="54" text-anchor="middle" font-size="13" fill="${ink}">q${i+1}</text><text x="${x}" y="114" text-anchor="middle" font-size="11" fill="${mu}">qubit ${i+1}</text>`;});
+  [[180,'link size 1'],[320,'link size 1'],[460,'link size 1']].forEach(([x,l])=>g+=`<text x="${x}" y="38" text-anchor="middle" font-size="11" fill="${ac}">${l}</text>`);
+  xs.forEach((x,i)=>{const hi=i===1||i===2;g+=`<line x1="${x}" y1="70" x2="${x}" y2="100" stroke="${ac}" stroke-width="2.5"/><circle cx="${x}" cy="50" r="20" fill="${nd}" stroke="${hi?wm:ink}" stroke-width="${hi?2.5:1.5}"/><text x="${x}" y="54" text-anchor="middle" font-size="13" fill="${ink}">${lab[i]}</text><text x="${x}" y="114" text-anchor="middle" font-size="11" fill="${mu}">${sub[i]}</text>`;});
   document.getElementById('chainsvg').innerHTML=g;
 }
 function mark(sec){sec.querySelectorAll('.q').forEach(q=>{const ins=[...q.querySelectorAll('input[data-ans]')];q.classList.remove('ok','no');
