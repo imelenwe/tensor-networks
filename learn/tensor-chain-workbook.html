@@ -42,9 +42,13 @@
   table{border-collapse:collapse; font-size:15px}
   th,td{border-bottom:1px solid var(--rule); padding:6px 10px; text-align:left; vertical-align:middle}
   th{font-weight:600; color:var(--muted); font-size:13px}
-  .vocab{border-left:3px solid var(--acc); background:var(--acc-soft); padding:10px 14px; border-radius:0 8px 8px 0; max-width:80ch; font-size:15px}
-  .vocab .aka{color:var(--muted); font-size:13px; font-style:italic; white-space:nowrap}
-  .vocab dt{font-weight:600; display:inline} .vocab dd{display:inline; margin:0} .vocab div{margin:3px 0}
+  table.vocab{border-left:3px solid var(--acc); background:var(--acc-soft); border-radius:0 8px 8px 0; font-size:14.5px; min-width:640px}
+  table.vocab th{background:var(--acc-soft); position:sticky; top:0}
+  table.vocab td{vertical-align:top; padding:7px 10px}
+  table.vocab tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--acc-soft) 60%, var(--paper))}
+  table.vocab td.num{font-family:var(--mono); color:var(--muted); text-align:right; width:2.5em}
+  table.vocab td.word{font-weight:600; white-space:nowrap}
+  table.vocab td.aka{color:var(--muted); font-style:italic}
   .key{border-left:3px solid var(--warm); background:var(--warm-soft); padding:10px 14px; border-radius:0 8px 8px 0; max-width:74ch}
   .count{border:2px solid var(--card); background:var(--card-soft); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; max-width:76ch}
   .count h3{color:var(--card)}
@@ -89,25 +93,28 @@
 
 <section id="words">
   <h2>Words we use</h2>
-  <dl class="vocab">
-    <div><dt>Leg</dt> <dd>= one index of a tensor; the number of legs = how many indices you need to pick one element. <span class="aka">also called: index, axis</span></dd></div>
-    <div><dt>Row leg</dt> <dd>(the row index): changing it moves you down a column: [0,0] → [1,0]. <span class="aka">also called: row index</span></dd></div>
-    <div><dt>Column leg</dt> <dd>(the column index): changing it moves you across a row: [0,0] → [0,1]. A leg is named after which index changes, not after the direction you move. <span class="aka">also called: column index</span></dd></div>
-    <div><dt>In</dt> <dd>= the gate's leg that is joined to the qubit's leg; it gets used up. <span class="aka">also called: input index</span></dd></div>
-    <div><dt>Out</dt> <dd>= the gate's leg that is left over; it becomes the qubit's leg after the gate. <span class="aka">also called: output index</span></dd></div>
-    <div><dt>Join</dt> <dd>two legs = match their index values, multiply, add up. Both legs disappear. <span class="aka">also called: contract (a contraction)</span></dd></div>
-    <div><dt>Qubit tensor</dt> <dd>= the small tensor that stores one qubit in the chain; its own-value leg is the qubit leg. <span class="aka">also called: site tensor; the qubit leg is the physical index</span></dd></div>
-    <div><dt>Chain</dt> <dd>= one qubit tensor per qubit, neighbours tied by links (section 6). <span class="aka">also called: MPS, matrix product state</span></dd></div>
-    <div><dt>Part</dt> <dd>= a table that splits into one A times one B (rank 1) (section 5). <span class="aka">also called: rank-1 term, Schmidt term</span></dd></div>
-    <div><dt>Rank</dt> <dd>= the number of linearly independent rows = the number of parts a table needs (section 5). <span class="aka">also called: Schmidt rank</span></dd></div>
-    <div><dt>Entangled</dt> <dd>= the two-qubit table has rank more than 1: it can't be split into one A and one B (section 5). <span class="aka">also called: (same)</span></dd></div>
-    <div><dt>Link</dt> <dd>= the shared "which part" index between two neighbouring qubit tensors (section 5). <span class="aka">also called: bond, virtual index</span></dd></div>
-    <div><dt>Link size</dt> <dd>= the number of parts = how many values the link index can take = the rank (section 5). <span class="aka">also called: bond dimension, χ (chi), max_bond in our code</span></dd></div>
-    <div><dt>Splitting / cut</dt> <dd>= turning a two-qubit table back into two qubit tensors (sections 5, 6). <span class="aka">also called: SVD split, decomposition</span></dd></div>
-    <div><dt>Weight</dt> <dd>= the number in front of a part; squared, the percentage of the state it carries (section 7). <span class="aka">also called: singular value, Schmidt coefficient</span></dd></div>
-    <div><dt>Trimming</dt> <dd>= dropping the smallest parts so a link stays small (section 7). <span class="aka">also called: truncation</span></dd></div>
-    <div><dt>Overlap, fidelity</dt> <dd>= how alike two states are; fidelity = overlap² (section 7). <span class="aka">also called: inner product ⟨φ|ψ⟩; fidelity |⟨φ|ψ⟩|²</span></dd></div>
-  </dl>
+  <div class="scroll"><table class="vocab">
+    <thead><tr><th>#</th><th>our word</th><th>meaning</th><th>also called</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="word">Leg</td><td>= one index of a tensor; the number of legs = how many indices you need to pick one element.</td><td class="aka">index, axis</td></tr>
+      <tr><td class="num">2</td><td class="word">Row leg</td><td>(the row index): changing it moves you down a column: [0,0] → [1,0].</td><td class="aka">row index</td></tr>
+      <tr><td class="num">3</td><td class="word">Column leg</td><td>(the column index): changing it moves you across a row: [0,0] → [0,1]. A leg is named after which index changes, not after the direction you move.</td><td class="aka">column index</td></tr>
+      <tr><td class="num">4</td><td class="word">In</td><td>= the gate's leg that is joined to the qubit's leg; it gets used up.</td><td class="aka">input index</td></tr>
+      <tr><td class="num">5</td><td class="word">Out</td><td>= the gate's leg that is left over; it becomes the qubit's leg after the gate.</td><td class="aka">output index</td></tr>
+      <tr><td class="num">6</td><td class="word">Join</td><td>two legs = match their index values, multiply, add up. Both legs disappear.</td><td class="aka">contract (a contraction)</td></tr>
+      <tr><td class="num">7</td><td class="word">Qubit tensor</td><td>= the small tensor that stores one qubit in the chain; its own-value leg is the qubit leg.</td><td class="aka">site tensor; the qubit leg is the physical index</td></tr>
+      <tr><td class="num">8</td><td class="word">Chain</td><td>= one qubit tensor per qubit, neighbours tied by links (section 6).</td><td class="aka">MPS, matrix product state</td></tr>
+      <tr><td class="num">9</td><td class="word">Part</td><td>= a table that splits into one A times one B (rank 1) (section 5).</td><td class="aka">rank-1 term, Schmidt term</td></tr>
+      <tr><td class="num">10</td><td class="word">Rank</td><td>= the number of linearly independent rows = the number of parts a table needs (section 5).</td><td class="aka">Schmidt rank</td></tr>
+      <tr><td class="num">11</td><td class="word">Entangled</td><td>= the two-qubit table has rank more than 1: it can't be split into one A and one B (section 5).</td><td class="aka">(same)</td></tr>
+      <tr><td class="num">12</td><td class="word">Link</td><td>= the shared "which part" index between two neighbouring qubit tensors (section 5).</td><td class="aka">bond, virtual index</td></tr>
+      <tr><td class="num">13</td><td class="word">Link size</td><td>= the number of parts = how many values the link index can take = the rank (section 5).</td><td class="aka">bond dimension, χ (chi), max_bond in our code</td></tr>
+      <tr><td class="num">14</td><td class="word">Splitting / cut</td><td>= turning a two-qubit table back into two qubit tensors (sections 5, 6).</td><td class="aka">SVD split, decomposition</td></tr>
+      <tr><td class="num">15</td><td class="word">Weight</td><td>= the number in front of a part; squared, the percentage of the state it carries (section 7).</td><td class="aka">singular value, Schmidt coefficient</td></tr>
+      <tr><td class="num">16</td><td class="word">Trimming</td><td>= dropping the smallest parts so a link stays small (section 7).</td><td class="aka">truncation</td></tr>
+      <tr><td class="num">17</td><td class="word">Overlap, fidelity</td><td>= how alike two states are; fidelity = overlap² (section 7).</td><td class="aka">inner product ⟨φ|ψ⟩; fidelity |⟨φ|ψ⟩|²</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <section id="legs">
