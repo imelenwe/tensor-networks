@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuit Backprop Workbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,650&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Same look as the Backprop Workbook: left nav, one column, small checked exercises */
+  :root{
+    --bg:#F4F6F8; --paper:#FFFFFF; --ink:#18222D; --muted:#5A6878; --rule:#D5DCE3; --node:#EEF2F6;
+    --acc:#0F7A72; --acc-soft:#D9F0EC; --warm:#B4690E; --warm-soft:#FBEBD6; --bad:#B42318; --bad-soft:#FDE4E1; --card:#5B3FB8; --card-soft:#EEE9FB;
+    --display:'Source Serif 4', Georgia, serif; --body:'IBM Plex Sans', system-ui, sans-serif; --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#11161C; --paper:#19212A; --ink:#E7ECF1; --muted:#97A5B4; --rule:#2C3743; --node:#202A35;
+    --acc:#5CCBC0; --acc-soft:#123430; --warm:#F0A548; --warm-soft:#3A2A14; --bad:#FF8A7D; --bad-soft:#3D1D1A; --card:#B7A4F5; --card-soft:#251E3D; color-scheme:dark } }
+  :root[data-theme="dark"]{
+    --bg:#11161C; --paper:#19212A; --ink:#E7ECF1; --muted:#97A5B4; --rule:#2C3743; --node:#202A35;
+    --acc:#5CCBC0; --acc-soft:#123430; --warm:#F0A548; --warm-soft:#3A2A14; --bad:#FF8A7D; --bad-soft:#3D1D1A; --card:#B7A4F5; --card-soft:#251E3D; color-scheme:dark }
+  *{box-sizing:border-box}
+  body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.6; padding-inline:16px; padding-block:24px 72px; margin:0}
+  .layout{max-width:1100px; margin:0 auto; display:grid; grid-template-columns:190px minmax(0,1fr); gap:20px; align-items:start}
+  nav{position:sticky; top:16px; background:var(--paper); border:1px solid var(--rule); border-radius:10px; padding:12px}
+  nav p{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+  nav ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+  nav a{display:block; padding:5px 8px; border-radius:6px; color:var(--ink); text-decoration:none; font-size:14px}
+  nav a:hover{background:var(--node)}
+  nav li.sub a{padding-left:22px; font-size:13px; color:var(--muted)}
+  nav li.sub a:hover{color:var(--ink)}
+  @media (max-width:600px){ .layout{grid-template-columns:minmax(0,1fr)} nav{top:0; z-index:2; padding:8px; min-width:0} nav p{display:none}
+    nav ol{flex-direction:row; overflow-x:auto} nav a{white-space:nowrap} }
+  main{display:flex; flex-direction:column; gap:18px; min-width:0}
+  h1,h2,h3{font-family:var(--display); text-wrap:balance; margin:0; line-height:1.2}
+  h1{font-size:clamp(26px,5vw,34px)} h2{font-size:21px} h3{font-size:16px}
+  p{margin:0; max-width:72ch}
+  section{background:var(--paper); border:1px solid var(--rule); border-radius:10px; padding:18px; display:flex; flex-direction:column; gap:12px; min-width:0; scroll-margin-top:16px}
+  .m{font-family:var(--mono); font-size:.92em}
+  .hint{color:var(--muted); font-size:14px}
+  .scroll{overflow-x:auto; max-width:100%}
+  pre{white-space:pre-wrap; font-family:var(--mono); font-size:14px; background:var(--node); border-radius:8px; padding:10px 14px; margin:0; overflow-x:auto; line-height:1.45}
+  table{border-collapse:collapse; font-size:15px}
+  th,td{border-bottom:1px solid var(--rule); padding:6px 10px; text-align:left; vertical-align:middle}
+  th{font-weight:600; color:var(--muted); font-size:13px}
+  table.vocab{border-left:3px solid var(--acc); background:var(--acc-soft); border-radius:0 8px 8px 0; font-size:14.5px}
+  table.vocab th{background:var(--acc-soft); position:sticky; top:0}
+  table.vocab td{vertical-align:top; padding:7px 10px}
+  table.vocab tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--acc-soft) 60%, var(--paper))}
+  table.vocab td.num{font-family:var(--mono); color:var(--muted); text-align:right; width:2.5em}
+  table.vocab td.word{font-weight:600; white-space:nowrap}
+  table.vocab td.aka{color:var(--muted); font-style:italic}
+  .key{border-left:3px solid var(--warm); background:var(--warm-soft); padding:10px 14px; border-radius:0 8px 8px 0; max-width:74ch}
+  .count{border:2px solid var(--card); background:var(--card-soft); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; max-width:76ch}
+  .count h3{color:var(--card)}
+  .count .rule{font-size:17px; font-weight:600; color:var(--card); line-height:1.5}
+  svg text{font-family:var(--mono)}
+  .ex{display:flex; flex-direction:column; gap:10px}
+  .q{border:1px solid var(--rule); border-radius:8px; padding:10px 12px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px}
+  .q.ok{background:var(--acc-soft); border-color:var(--acc)} .q.no{background:var(--bad-soft); border-color:var(--bad)}
+  .q .lbl{flex:1 1 260px}
+  .q input{width:78px; font-family:var(--mono); font-size:15px; padding:4px 6px; border:1px solid var(--rule); border-radius:6px; background:var(--bg); color:var(--ink)}
+  .grid2{display:inline-grid; grid-template-columns:auto auto auto; gap:4px 6px; align-items:center; font-family:var(--mono); font-size:13px; color:var(--muted)}
+  input:focus-visible, button:focus-visible, nav a:focus-visible{outline:2px solid var(--acc); outline-offset:2px}
+  .btns{display:flex; flex-wrap:wrap; gap:10px}
+  button{font-family:var(--body); font-size:15px; padding:7px 14px; border-radius:7px; border:1px solid var(--rule); background:var(--paper); color:var(--ink); cursor:pointer}
+  button.primary{background:var(--acc); border-color:var(--acc); color:var(--paper)}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav aria-label="Sections">
+  <p>Workbook</p>
+  <ol>
+    <li><a href="index.html">← Learn index</a></li>
+    <li><a href="#words">Words we use</a></li>
+    <li><a href="#angles">1 · Where 4,020 angles come from</a></li>
+    <li><a href="#cost">2 · Why not nudge each angle?</a></li>
+    <li><a href="#one">3 · One qubit, one angle</a></li>
+    <li><a href="#two">4 · A two-qubit gate</a></li>
+    <li><a href="#many">5 · All slopes at once</a></li>
+    <li><a href="#improve">6 · An improvement: forward meets backward</a></li>
+    <li class="sub"><a href="#improve-circuit">6.1 Which circuit</a></li>
+    <li class="sub"><a href="#improve-layers">6.2 Split into layers</a></li>
+    <li class="sub"><a href="#improve-forward">6.3 Forward pass</a></li>
+    <li class="sub"><a href="#improve-row1">6.4 Backward: layer 3</a></li>
+    <li class="sub"><a href="#improve-undo">6.5 Why undo on T is allowed</a></li>
+    <li class="sub"><a href="#improve-rows23">6.6 Backward: layers 2, 1</a></li>
+    <li class="sub"><a href="#improve-update">6.7 Update the angles</a></li>
+    <li class="sub"><a href="#improve-fast">6.8 The real code, faster</a></li>
+    <li class="sub"><a href="#improve-symbols">6.9 Recipe in symbols</a></li>
+    <li class="sub"><a href="#improve-hand">6.10 By hand</a></li>
+    <li><a href="#jax">7 · How jax gets the same slopes</a></li>
+    <li class="sub"><a href="#jax-steps">7.1 Step by step</a></li>
+    <li class="sub"><a href="#jax-memory">7.2 Why it keeps every value</a></li>
+    <li class="sub"><a href="#jax-compare">7.3 jax vs the improvement</a></li>
+  </ol>
+</nav>
+<main>
+<header style="display:flex;flex-direction:column;gap:6px">
+  <h1>Circuit Backprop Workbook</h1>
+  <p class="hint">Training our circuit means finding a slope for every angle. This workbook shows how one forward pass and one backward pass give all of them, using the same chain rule as backprop in a neural network (<a href="https://imelenwe.github.io/quantum-machine-learning/Basic%20ML/backprop-workbook.html">Backprop Workbook</a>), and the chains from the <a href="tensor-chain-workbook.html">Tensor Chain Workbook</a>. Work each exercise on paper, then Check. Within 0.01 counts.</p>
+</header>
+
+<section id="words">
+  <h2>Words we use</h2>
+  <div class="scroll"><table class="vocab">
+    <thead><tr><th>#</th><th>our word</th><th>meaning</th><th>also called</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="word">Angle</td><td>a number inside a gate that training can turn, like a weight in a neural network</td><td class="aka">parameter, θ</td></tr>
+      <tr><td class="num">2</td><td class="word">Trainable circuit</td><td>the short circuit whose angles we tune</td><td class="aka">ansatz</td></tr>
+      <tr><td class="num">3</td><td class="word">Target</td><td>the state of the full, deep Trotter circuit, which the short circuit should copy</td><td class="aka">target state |T⟩</td></tr>
+      <tr><td class="num">4</td><td class="word">Overlap, fidelity</td><td>how alike two states are: line up their entries, multiply, add; fidelity = overlap²</td><td class="aka">⟨T|ψ⟩, |⟨T|ψ⟩|²</td></tr>
+      <tr><td class="num">5</td><td class="word">Loss</td><td>L = 1 − fidelity: 0 when the circuit copies the target perfectly</td><td class="aka">cost, objective</td></tr>
+      <tr><td class="num">6</td><td class="word">Slope</td><td>how much L moves per unit nudge of one angle</td><td class="aka">gradient entry, ∂L/∂θ</td></tr>
+      <tr><td class="num">7</td><td class="word">Layer</td><td>a group of two-qubit blocks that share no qubit, applied together</td><td class="aka">moment, ASAP layer</td></tr>
+      <tr><td class="num">8</td><td class="word">Forward state S<sub>k</sub></td><td>the state after the first k layers, starting from |0…0⟩</td><td class="aka">ψ_k</td></tr>
+      <tr><td class="num">9</td><td class="word">Target side B<sub>k</sub></td><td>the target with the layers after layer k undone; the last one is T itself</td><td class="aka">backward state, adjoint state, φ_k</td></tr>
+      <tr><td class="num">10</td><td class="word">Undo a layer</td><td>apply the layer backwards: its conjugate transpose (transpose, then complex conjugate)</td><td class="aka">G†, inverse</td></tr>
+      <tr><td class="num">11</td><td class="word">Checkpoint</td><td>a forward state saved on the way, so it need not be recomputed from the start</td><td class="aka">gradient checkpointing</td></tr>
+      <tr><td class="num">12</td><td class="word">Training step</td><td>one forward pass + one backward pass, then all angles turned once</td><td class="aka">iteration</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="angles">
+  <h2>1. Where 4,020 angles come from</h2>
+
+  <div class="count">
+    <h3>The big picture</h3>
+    <p><b>We build</b> the hadron circuit: the <a href="brickwork-step.html">brickwork</a>. It has three kinds of two-qubit gate (pair, electric, SWAP) plus one-qubit rotations. Its numbers are fixed.</p>
+    <p><b>IBM's library copies it</b> into a <b>trainable circuit</b>: the same gates in the same places, but each one rebuilt with adjustable angles θ. Training turns the θ's until the copy makes the state we want.</p>
+    <p class="rule">4,020 = the number of θ's in that copy (40 qubits).</p>
+  </div>
+
+  <h3>Our circuit: one step of the brickwork</h3>
+  <img src="brickwork-full.png" alt="One Trotter step on 12 qubits: orange pair gates, green SWAPs, purple electric gates, grey one-qubit rotations" style="max-width:100%;height:auto;border-radius:8px;background:#fff">
+  <p class="hint">Orange = pair gate, green = SWAP, purple = electric gate, grey dashed = one-qubit rotations.</p>
+
+  <h3>IBM's copy, gate by gate</h3>
+  <p><b>Our piece:</b> three gates from the brickwork above, one of each kind: pair gate 1 (qubits 0, 1), the SWAP next to it (qubits 1, 2), electric gate 18 (qubits 0, 1).</p>
+  <img src="three-gates.png" alt="Pair gate on q0 q1, then SWAP on q1 q2, then electric gate on q0 q1" style="max-width:100%;height:auto;border-radius:8px;background:#fff">
+  <p><b>IBM's copy</b> of the same piece. Every θ is one adjustable angle:</p>
+  <img src="three-gates-trainable.png" alt="ZXZ box on each qubit at the start; then for each of the three gates a KAK box followed by a ZXZ box on each of its two qubits" style="max-width:100%;height:auto;border-radius:8px;background:#fff">
+  <p><b>The same recipe for every kind of gate:</b> each two-qubit gate (pair, SWAP or electric) becomes one <b>KAK</b> box followed by one <b>ZXZ</b> box on each of its two qubits. Only the starting values of the θ's differ.</p>
+  <div class="scroll"><table>
+    <tr><th>box</th><th>what it does</th><th>θ's</th></tr>
+    <tr><td class="m">ZXZ</td><td>turns one qubit to any direction</td><td class="m">3</td></tr>
+    <tr><td class="m">ZXZ(0, θ, θ)</td><td>the same, at the very start of each qubit: one turn does nothing to |0⟩, so it is fixed at 0</td><td class="m">2</td></tr>
+    <tr><td class="m">KAK</td><td>makes two qubits act on each other, in three possible ways (called XX, YY, ZZ); one θ for how much of each</td><td class="m">3</td></tr>
+  </table></div>
+  <p><b>Counting left to right</b> in IBM's copy (the same coloured boxes as in the picture):</p>
+  <div class="scroll"><table>
+    <tr><th>box in the picture</th><th>what is inside</th><th>θ's in this box</th><th>running total</th></tr>
+    <tr><td>grey dashed: start of q0, q1, q2</td><td>3 ZXZ boxes, 2 θ's each (θ[0] … θ[5])</td><td class="m">2 + 2 + 2 = 6</td><td class="m">6</td></tr>
+    <tr><td>orange: pair gate</td><td>KAK (3: θ[6] θ[7] θ[8]) + ZXZ on q0 (3: θ[9] θ[10] θ[11]) + ZXZ on q1 (3: θ[12] θ[13] θ[14])</td><td class="m">3 + 3 + 3 = 9</td><td class="m">6 + 9 = 15</td></tr>
+    <tr><td>green: SWAP</td><td>KAK (3: θ[15] … θ[17]) + ZXZ on q1 (3: θ[18] … θ[20]) + ZXZ on q2 (3: θ[21] … θ[23])</td><td class="m">3 + 3 + 3 = 9</td><td class="m">15 + 9 = 24</td></tr>
+    <tr><td>purple: electric gate</td><td>KAK (3: θ[24] … θ[26]) + ZXZ on q0 (3: θ[27] … θ[29]) + ZXZ on q1 (3: θ[30] … θ[32])</td><td class="m">3 + 3 + 3 = 9</td><td class="m">24 + 9 = <b>33</b></td></tr>
+  </table></div>
+  <p>Check: the last θ in the picture is θ[32], and counting from θ[0] that is 33 θ's ✓.</p>
+  <h3>From this piece to the whole circuit</h3>
+  <p>The whole trainable circuit is the same two kinds of box, repeated:</p>
+  <div class="scroll"><table>
+    <tr><th>box</th><th>what it is</th><th>θ's</th><th>how many of them</th></tr>
+    <tr><td>grey dashed</td><td>one ZXZ box at the start of a qubit; its first Z is fixed at 0, so only 2 of its turns are trained</td><td class="m">2</td><td>one per qubit</td></tr>
+    <tr><td>coloured (orange / green / purple)</td><td>one KAK box + one ZXZ box on each of the gate's two qubits = 3 + 3 + 3</td><td class="m">9</td><td>one per two-qubit gate</td></tr>
+  </table></div>
+  <p class="hint">The 2 and the 9 are counted separately, not added into one number: a qubit's 2 come once, while a qubit takes part in many gates.</p>
+  <p class="rule">θ's = 2 × (number of qubits) + 9 × (number of two-qubit gates)</p>
+
+  <h3>12 qubits, counted</h3>
+  <p>Let's count the θ's of the 12-qubit trainable circuit, in two parts: the single-qubit part, then the two-qubit gates.</p>
+  <p><b>Part 1, single-qubit part.</b> Each of the 12 qubits has one grey start box: 12 boxes × 2 θ's = <b>24 θ's</b>.</p>
+  <p class="hint">Our circuit's own one-qubit gates (the 6 X flips at the start, the H gates, the mass Rz's after each step: the grey dashed boxes in the brickwork picture) add <b>no</b> θ's: IBM's copy absorbs them into the ZXZ boxes next to them.</p>
+  <p><b>Part 2, the two-qubit gates.</b> The brickwork picture at the top shows <b>one Trotter step</b>. The trainable circuit repeats that step <b>5 times</b> (5 steps). In the picture, step 1 has 10 orange pair gates (bricks 1–6, 12–15), 7 green SWAPs (bricks 7–11, 16–17) and 6 purple electric gates (bricks 18–23). Steps 2–5 are the same except for <b>3 more SWAPs</b> each: step 1 skips the first SWAP layer.</p>
+  <div class="scroll"><table>
+    <tr><th>step</th><th>orange: pair</th><th>green: SWAP</th><th>purple: electric</th><th>two-qubit gates</th><th>θ's</th></tr>
+    <tr><td class="m">1</td><td class="m">10</td><td class="m">7</td><td class="m">6</td><td class="m">10 + 7 + 6 = 23</td><td class="m">23 × 9 = 207</td></tr>
+    <tr><td class="m">2</td><td class="m">10</td><td class="m">10</td><td class="m">6</td><td class="m">10 + 10 + 6 = 26</td><td class="m">26 × 9 = 234</td></tr>
+    <tr><td class="m">3</td><td class="m">10</td><td class="m">10</td><td class="m">6</td><td class="m">10 + 10 + 6 = 26</td><td class="m">26 × 9 = 234</td></tr>
+    <tr><td class="m">4</td><td class="m">10</td><td class="m">10</td><td class="m">6</td><td class="m">10 + 10 + 6 = 26</td><td class="m">26 × 9 = 234</td></tr>
+    <tr><td class="m">5</td><td class="m">10</td><td class="m">10</td><td class="m">6</td><td class="m">10 + 10 + 6 = 26</td><td class="m">26 × 9 = 234</td></tr>
+    <tr><th>5 steps</th><td class="m"><b>50</b></td><td class="m"><b>47</b></td><td class="m"><b>30</b></td><td class="m"><b>127</b></td><td class="m"><b>1,143</b></td></tr>
+  </table></div>
+  <p><b>Total:</b> 24 (qubits) + 1,143 (two-qubit gates) = <b>1,167 θ's</b>.</p>
+
+  <h3>40 qubits, counted</h3>
+  <p>The same brickwork, taller (20 sites instead of 6).</p>
+  <p><b>Part 1, single-qubit part.</b> 40 qubits × 2 θ's = <b>80 θ's</b>.</p>
+  <p><b>Part 2, the two-qubit gates</b>, again one step repeated 5 times. <b>Where do 38, 28 and 20 come from?</b> Count each layer of bricks in the 12-qubit picture (6 sites), see how it grows with the number of sites n, then put in n = 20:</p>
+  <div class="scroll"><table>
+    <tr><th>layer in the picture</th><th>which qubits (12-qubit picture)</th><th>6 sites</th><th>rule</th><th>20 sites</th></tr>
+    <tr><td>orange, 1st pair layer (bricks 1–6)</td><td>q0-1, q2-3, …, q10-11: every site</td><td class="m">6</td><td class="m">n</td><td class="m">20</td></tr>
+    <tr><td>orange, 2nd pair layer (bricks 12–15)</td><td>q2-3 … q8-9: every site except the two ends</td><td class="m">4</td><td class="m">n − 2</td><td class="m">18</td></tr>
+    <tr><th>pair gates per step</th><td></td><td class="m"><b>10</b></td><td class="m">2n − 2</td><td class="m"><b>38</b></td></tr>
+    <tr><td>purple, electric (bricks 18–23)</td><td>one per site</td><td class="m"><b>6</b></td><td class="m">n</td><td class="m"><b>20</b></td></tr>
+    <tr><td>green, SWAP layer (bricks 7–11)</td><td>q1-2, q3-4, …, q9-10: between every two neighbouring sites</td><td class="m">5</td><td class="m">n − 1</td><td class="m">19</td></tr>
+    <tr><td>green, SWAP layer (bricks 16–17)</td><td>q3-4, q7-8: every 4th qubit</td><td class="m">2</td><td class="m">(n − 1) ÷ 2, rounded down</td><td class="m">9</td></tr>
+    <tr><th>SWAPs in step 1</th><td></td><td class="m"><b>7</b></td><td></td><td class="m"><b>28</b></td></tr>
+    <tr><td>green, extra SWAP layer in steps 2–5 (step 1 skips it, so it is not in the picture)</td><td>q1-2, q5-6, q9-10, …: every 4th qubit</td><td class="m">3</td><td class="m">n ÷ 2</td><td class="m">10</td></tr>
+    <tr><th>SWAPs in steps 2–5</th><td></td><td class="m"><b>10</b></td><td></td><td class="m"><b>38</b></td></tr>
+  </table></div>
+  <p class="hint">All three 40-qubit numbers match a direct count of the gates in our code.</p>
+  <p>Per step, then:</p>
+  <div class="scroll"><table>
+    <tr><th>step</th><th>orange: pair</th><th>green: SWAP</th><th>purple: electric</th><th>two-qubit gates</th><th>θ's</th></tr>
+    <tr><td class="m">1</td><td class="m">38</td><td class="m">28</td><td class="m">20</td><td class="m">38 + 28 + 20 = 86</td><td class="m">86 × 9 = 774</td></tr>
+    <tr><td class="m">2</td><td class="m">38</td><td class="m">38</td><td class="m">20</td><td class="m">38 + 38 + 20 = 96</td><td class="m">96 × 9 = 864</td></tr>
+    <tr><td class="m">3</td><td class="m">38</td><td class="m">38</td><td class="m">20</td><td class="m">38 + 38 + 20 = 96</td><td class="m">96 × 9 = 864</td></tr>
+    <tr><td class="m">4</td><td class="m">38</td><td class="m">38</td><td class="m">20</td><td class="m">38 + 38 + 20 = 96</td><td class="m">96 × 9 = 864</td></tr>
+    <tr><td class="m">5</td><td class="m">38</td><td class="m">38</td><td class="m">20</td><td class="m">38 + 38 + 20 = 96</td><td class="m">96 × 9 = 864</td></tr>
+    <tr><th>5 steps</th><td class="m"><b>190</b></td><td class="m"><b>180</b></td><td class="m"><b>100</b></td><td class="m"><b>470</b></td><td class="m"><b>4,230</b></td></tr>
+  </table></div>
+  <p><b>Total:</b> 80 + 4,230 = <b>4,310 θ's</b>.</p>
+
+  <h3>Last step: one θ per pair and electric gate is switched off</h3>
+  <p>The KAK box has 3 θ's because two qubits can act on each other in three ways (called XX, YY and ZZ). Our <b>pair</b> and <b>electric</b> gates never use the third way, ZZ: its θ starts at 0. We <b>keep that θ fixed at 0</b> instead of training it, because then each of these gates needs one CNOT fewer on hardware (3 → 2). SWAPs use all three ways, so theirs stay.</p>
+  <p>So: <b>one θ fewer for every pair and every electric gate.</b></p>
+  <p>The numbers of pair and electric gates are the "5 steps" row of the tables above:</p>
+  <div class="scroll"><table>
+    <tr><th></th><th>θ's before</th><th>pair gates</th><th>electric gates</th><th>θ's switched off</th><th>trainable θ's</th></tr>
+    <tr><td>12 qubits</td><td class="m">1,167</td><td class="m">50</td><td class="m">30</td><td class="m">50 + 30 = 80</td><td class="m">1,167 − 80 = <b>1,087</b></td></tr>
+    <tr><td>40 qubits</td><td class="m">4,310</td><td class="m">190</td><td class="m">100</td><td class="m">190 + 100 = 290</td><td class="m">4,310 − 290 = <b>4,020</b> ✓ the summary.md</td></tr>
+  </table></div>
+  <details><summary class="hint">Inside the KAK box (3 CNOTs; the ZZ θ sits in the Rz)</summary>
+  <img src="kak-block-inside.png" alt="Inside the KAK block: three CNOTs with rotations using its three angles" style="max-width:100%;height:auto;border-radius:8px;background:#fff"></details>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) 12 qubits: 50 pair, 30 electric, 47 SWAPs, 12 qubits. How many θ's?</span><input data-ans="1087" data-tol="0.5"></div>
+    <div class="q"><span class="lbl">b) 40 qubits if we did <b>not</b> lock ZZ (pair and electric then 9 each)?</span><input data-ans="4310" data-tol="0.5"></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="cost">
+  <h2>2. Why not nudge each angle?</h2>
+  <p>Training needs a slope for every angle at every training step. The obvious way: nudge one angle a tiny bit, simulate the circuit again, see how much L moved; repeat for each angle.</p>
+  <div class="key"><b>The cost of nudging:</b> one extra simulation per angle: <b>4,020 simulations</b> for one training step, and training takes hundreds of steps. <b>The cost of backprop:</b> one forward pass and one backward pass, about <b>2 simulations</b>, for all 4,020 slopes at once. Sections 3–5 show how.</div>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) Extra simulations to nudge every angle once (40 qubits)</span><input data-ans="4020" data-tol="0.5"></div>
+    <div class="q"><span class="lbl">b) Roughly how many times cheaper is backprop (4,020 ÷ 2)?</span><input data-ans="2010" data-tol="10"></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="one">
+  <h2>3. One qubit, one angle, by hand</h2>
+  <div class="key">
+  <h3>Worked example: the smallest circuit</h3>
+  <p><b>The circuit:</b> one qubit, starting at |0⟩, one rotation by angle θ. <b>The target:</b> T = |1⟩ = (0, 1).</p>
+
+  <p><b>Which rotation?</b> A reminder of the three one-qubit rotations, applied to |0⟩:</p>
+  <div class="scroll"><table>
+    <tr><th>rotation</th><th>matrix</th><th>applied to |0⟩</th></tr>
+    <tr><td class="m">R<sub>X</sub>(θ) = e<sup>−iθX/2</sup></td><td class="m">[[cos θ/2, −i sin θ/2], [−i sin θ/2, cos θ/2]]</td><td class="m">cos(θ/2)|0⟩ − i sin(θ/2)|1⟩</td></tr>
+    <tr><td class="m"><b>R<sub>Y</sub>(θ) = e<sup>−iθY/2</sup></b></td><td class="m">[[cos θ/2, −sin θ/2], [sin θ/2, cos θ/2]]</td><td class="m"><b>cos(θ/2)|0⟩ + sin(θ/2)|1⟩</b></td></tr>
+    <tr><td class="m">R<sub>Z</sub>(θ) = e<sup>−iθZ/2</sup></td><td class="m">[[e<sup>−iθ/2</sup>, 0], [0, e<sup>iθ/2</sup>]]</td><td class="m">e<sup>−iθ/2</sup>|0⟩ (only a phase)</td></tr>
+  </table></div>
+  <p>We use <b>R<sub>Y</sub></b>: all its numbers are real, so no <i>i</i> appears by hand. Its result as a vector: ψ(θ) = (cos θ/2, sin θ/2).</p>
+
+  <h3>Part A: the derivation (symbols only)</h3>
+  <p><b>A1. The equations:</b></p>
+<pre>state:     ψ(θ) = (cos(θ/2), sin(θ/2))
+overlap:   o = ψ · T
+             = cos(θ/2)·0 + sin(θ/2)·1
+             = sin(θ/2)
+fidelity:  F = o²
+loss:      L = 1 − F</pre>
+  <p><b>A2. Differentiate each equation by itself</b> (one link of the chain each):</p>
+<pre>L = 1 − F     →  ∂L/∂F = −1
+F = o²        →  ∂F/∂o = 2o
+o = sin(θ/2)  →  ∂o/∂θ = ½ cos(θ/2)</pre>
+  <p class="hint">The last one: the derivative of sin is cos, times the derivative of θ/2, which is ½.</p>
+  <p><b>A3. Chain them:</b></p>
+<pre>∂L/∂θ = ∂L/∂F × ∂F/∂o × ∂o/∂θ
+      = (−1) × (2o) × (½ cos(θ/2))
+      = − o · cos(θ/2)
+      = − sin(θ/2) · cos(θ/2)</pre>
+
+  <h3>Part B: the example, θ = 60°</h3>
+  <p>θ/2 = 30°, sin 30° = 0.5, cos 30° = 0.866.</p>
+<pre>forward:   ψ = (0.866, 0.5)
+           o = 0.5
+           F = 0.5² = 0.25
+           L = 1 − 0.25 = 0.75
+backward:  ∂L/∂F = −1
+           ∂F/∂o = 2 × o = 2 × 0.5 = 1
+           ∂o/∂θ = ½ × cos 30° = ½ × 0.866 = 0.433
+           ∂L/∂θ = (−1) × 1 × 0.433 = −0.433</pre>
+  <p><b>Check by nudging.</b> Turn θ up by 0.01 (in radians: 60° = 1.047 rad, so θ = 1.057). Then L = 1 − sin²(1.057/2) = 0.7457, which is 0.0043 less than 0.75: L moved by −0.43 per unit of θ ✓.</p>
+  <p><b>Meaning:</b> the slope is negative, so turning θ up lowers L: the qubit turns further towards |1⟩.</p>
+  <p class="hint">Slopes use θ in radians: "the derivative of sin is cos" is true only in radians.</p>
+  </div>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) ψ at θ = 60°</span><input data-ans="0.866"><input data-ans="0.5"></div>
+    <div class="q"><span class="lbl">b) Overlap with T = |1⟩</span><input data-ans="0.5"></div>
+    <div class="q"><span class="lbl">c) Fidelity</span><input data-ans="0.25"></div>
+    <div class="q"><span class="lbl">d) L</span><input data-ans="0.75"></div>
+    <div class="q"><span class="lbl">e) ∂L/∂θ</span><input data-ans="-0.433"></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="two">
+  <h2>4. A two-qubit gate with one angle</h2>
+  <div class="key">
+  <h3>Assumptions (choices for this example)</h3>
+  <p>1. <b>Two qubits</b>, A (first) and B (second).<br>
+  2. <b>Start:</b> only |00⟩ and |10⟩, with amounts α and β: |ψ₀⟩ = α|00⟩ + β|10⟩.<br>
+  3. <b>Target: the Bell state</b> (an assumption, chosen because this gate can reach it exactly): |T⟩ = (1/√2)|00⟩ + (1/√2)|11⟩.<br>
+  4. <b>Trainable gate:</b> CRY(θ), "if A is |1⟩, turn B by θ". θ is the only angle.<br>
+  5. <b>All amounts are real</b>, so the overlap is "multiply matching amounts and add".</p>
+
+  <h3>The gate</h3>
+<pre>CRY(θ) = |0⟩⟨0| ⊗ I  +  |1⟩⟨1| ⊗ R_Y(θ)
+
+R_Y(θ) = e^(−iθY/2) = cos(θ/2) I − i sin(θ/2) Y
+R_Y(θ)|0⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩</pre>
+
+  <h3>Part A: the derivation (symbols only)</h3>
+  <p><b>Forward:</b></p>
+<pre>CRY(θ) α|00⟩ = α|00⟩
+               (A is 0: B untouched)
+CRY(θ) β|10⟩ = β |1⟩ ⊗ R_Y(θ)|0⟩
+               (A is 1: B turned)
+             = β cos(θ/2)|10⟩ + β sin(θ/2)|11⟩
+
+|ψ(θ)⟩ = α|00⟩ + β cos(θ/2)|10⟩ + β sin(θ/2)|11⟩</pre>
+  <p><b>Overlap with the Bell target</b> (matching kets give 1, different kets give 0):</p>
+<pre>o = ⟨T|ψ(θ)⟩
+  = (1/√2)·α               from |00⟩
+  + 0                      |10⟩ is not in T
+  + (1/√2)·β sin(θ/2)      from |11⟩
+  = (α + β sin(θ/2)) / √2
+
+F = o²
+L = 1 − F</pre>
+  <p><b>Backward:</b></p>
+<pre>∂L/∂F = −1
+∂F/∂o = 2o
+∂o/∂θ = (β/√2) × ½ cos(θ/2)
+
+∂L/∂θ = ∂L/∂F × ∂F/∂o × ∂o/∂θ
+      = (−1) × (2o) × (β/√2) × ½ cos(θ/2)</pre>
+
+  <h3>Part B: the example, α = β = 1/√2, θ = 60°</h3>
+<pre>o     = (1/√2 + (1/√2) × sin 30°) / √2
+      = (0.707 + 0.707 × 0.5) / 1.414
+      = 1.061 / 1.414 = 0.75
+F     = 0.75² = 0.5625
+L     = 1 − 0.5625 = 0.4375
+
+∂L/∂F = −1
+∂F/∂o = 2 × 0.75 = 1.5
+∂o/∂θ = (0.707 / 1.414) × ½ × cos 30°
+      = 0.5 × 0.5 × 0.866 = 0.217
+∂L/∂θ = (−1) × 1.5 × 0.217 = −0.325</pre>
+  <p><b>Meaning:</b> the slope is negative, so turning θ up lowers L. At θ = 180°, sin 90° = 1 and cos 90° = 0, so |ψ⟩ = (1/√2)(|00⟩ + |11⟩) = |T⟩ and L = 0.</p>
+  </div>
+  <div class="ex">
+    <div class="q"><span class="lbl">a) At θ = 60°: the amounts of |10⟩ and |11⟩ in |ψ(θ)⟩</span><input data-ans="0.612"><input data-ans="0.354"></div>
+    <div class="q"><span class="lbl">b) Overlap o</span><input data-ans="0.75"></div>
+    <div class="q"><span class="lbl">c) L</span><input data-ans="0.4375"></div>
+    <div class="q"><span class="lbl">d) ∂L/∂θ</span><input data-ans="-0.325"></div>
+  </div>
+  <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
+</section>
+
+<section id="many">
+  <h2>5. All slopes at once</h2>
+  <div class="count">
+    <p><b>Why:</b> sections 3 and 4 each found <b>one</b> slope. Our circuit has <b>4,020</b> angles, and nudging each one costs 4,020 simulations per training step.</p>
+    <p><b>How jax does it, in one line:</b> jax records every multiply-and-add used to compute o = ⟨T|circuit|0⟩, keeps every in-between result, then runs the chain rule backwards over that record. That gives all 4,020 slopes for about the cost of 2 simulations, but storing every in-between result is what asked for <b>1.5 TB</b> at 120 qubits. Section 6 shows a method that needs about 8 GB; section 7 walks through jax step by step.</p>
+  </div>
+</section>
+
+<section id="improve">
+  <h2>6. An improvement: forward meets backward</h2>
+  <div class="count">
+    <h3>The idea, on 3 layers</h3>
+    <p><b>The circuit:</b> S0 = |0…0⟩ → layer 1 → S1 → layer 2 → S2 → layer 3 → S3. <b>The target:</b> T.</p>
+    <p><b>Forward pass</b> (all angles frozen): run the 3 layers and keep S0, S1, S2. Compare S3 with T: that gives o and L.</p>
+    <p><b>Backward pass, layer 3 first:</b></p>
+<pre>Layer 3   (target side: T)
+ 1. Take S2, the state before layer 3.
+ 2. Nudge one angle of layer 3 (+0.01).
+ 3. Apply layer 3, with the nudged angle,
+    to S2 → S3′ (S3, slightly changed).
+ 4. Compare S3′ with T → L′.
+    slope = (L′ − L) / 0.01
+ 5. Put the angle back.
+ 6. Loop: steps 2–5 for every angle
+    of layer 3.
+ 7. Undo layer 3 on T → B2,
+    the target side for layer 2.
+
+Layer 2   (target side: B2)
+ Steps 1–6 with S1: S2′ compared with B2.
+ 7. Undo layer 2 on B2 → B1.
+
+Layer 1   (target side: B1)
+ Steps 1–6 with S0: S1′ compared with B1.
+ Nothing left to undo: done.</pre>
+    <p><b>Update:</b> only now does every angle have its slope. Turn all angles at once: that is one training step. The next training step repeats both passes with the new angles.</p>
+    <p class="hint">Sections 6.4 and 6.6 nudge each angle up <b>and</b> down (S3⁺, S3⁻) for a more accurate slope; otherwise the steps are the same.</p>
+    <p class="rule">The angles never change during the two passes. The passes produce slopes; the update uses them.</p>
+  </div>
+
+  <h3 id="improve-circuit">6.1 Which circuit: 3 qubits</h3>
+  <p>Section 1's piece: a pair gate on q0, q1, a SWAP on q1, q2, an electric gate on q0, q1.</p>
+  <img src="three-gates.png" alt="Pair gate on q0 q1, then SWAP on q1 q2, then electric gate on q0 q1" style="max-width:100%;height:auto;border-radius:8px;background:#fff">
+  <p class="hint">The picture shows the gates' shapes (drawn with x = 100 strengths). The numbers below use our 5-step start at x = 200: each strength × 6/5, so pair 0.3 × 6/5 = 0.36 and electric −0.226125 × 6/5 = −0.27135.</p>
+  <p>IBM's trainable copy of it:</p>
+  <img src="three-gates-trainable.png" alt="ZXZ box on each qubit at the start; then for each of the three gates a KAK box followed by a ZXZ box on each of its two qubits" style="max-width:100%;height:auto;border-radius:8px;background:#fff">
+  <div class="scroll"><table>
+    <tr><th>what</th><th>value</th></tr>
+    <tr><td>θ's in the picture</td><td class="m">θ[0] … θ[32] = 33</td></tr>
+    <tr><td>locked at 0 (the ZZ θ of the pair and electric KAK, section 1)</td><td class="m">θ[8], θ[26]</td></tr>
+    <tr><td>trained</td><td class="m">33 − 2 = <b>31</b></td></tr>
+    <tr><td>starting angles: the library picks them so the trainable circuit equals the circuit above exactly</td><td class="m">θ[6] = θ[7] = 0.18, θ[24] = 0.0678, θ[17] = 0.7854, …</td></tr>
+    <tr><td><b>target T (assumption)</b>: the same trainable circuit with three angles changed</td><td class="m">θ[6] = θ[7] = θ[24] = 0.349</td></tr>
+  </table></div>
+  <p class="hint">All angles are in radians from here on (0.349 rad = 20°). The target is made up so that we know where the angles should go. A real target comes from the deep Trotter circuit; none of the steps below change.</p>
+
+  <h3 id="improve-layers">6.2 Step 0: split the circuit into layers</h3>
+  <p>A <b>layer</b> is a group of two-qubit blocks that share no qubit, so they can be applied together. Each block goes one layer after the last block that used one of its qubits. Here every block uses q1, so each block waits for the one before it: <b>3 layers, one block each</b>. Each start ZXZ joins the first block on its qubit.</p>
+  <div class="scroll"><table>
+    <tr><th>layer</th><th>what is in it</th><th>its angles</th><th>how many</th></tr>
+    <tr><td class="m">1</td><td>start ZXZs of q0, q1 + pair block</td><td class="m">θ[0]–θ[3], θ[6], θ[7], θ[9]–θ[14]</td><td class="m">4 + 2 + 6 = 12</td></tr>
+    <tr><td class="m">2</td><td>start ZXZ of q2 + SWAP block</td><td class="m">θ[4], θ[5], θ[15]–θ[23]</td><td class="m">2 + 9 = 11</td></tr>
+    <tr><td class="m">3</td><td>electric block</td><td class="m">θ[24], θ[25], θ[27]–θ[32]</td><td class="m">2 + 6 = 8</td></tr>
+    <tr><th>total</th><td></td><td></td><td class="m">12 + 11 + 8 = <b>31</b></td></tr>
+  </table></div>
+
+  <h3 id="improve-forward">6.3 Forward pass (all 31 angles frozen)</h3>
+  <div class="scroll"><table>
+    <tr><th>step</th><th>in</th><th>apply</th><th>out</th></tr>
+    <tr><td class="m">1</td><td class="m">S0 = |000⟩</td><td>layer 1</td><td class="m">S1 (kept)</td></tr>
+    <tr><td class="m">2</td><td class="m">S1</td><td>layer 2</td><td class="m">S2 (kept)</td></tr>
+    <tr><td class="m">3</td><td class="m">S2</td><td>layer 3</td><td class="m">S3 = final state</td></tr>
+    <tr><td>compare</td><td class="m">S3 with T</td><td></td><td class="m">o = ⟨T|S3⟩ = 0.9063 − 0.1361i</td></tr>
+  </table></div>
+<pre>F = |o|² = 0.9063² + 0.1361²
+         = 0.8214 + 0.0185 = 0.8399
+L = 1 − F = 1 − 0.8399 = 0.1601</pre>
+  <p class="hint">⟨T|S3⟩ is the overlap of T and S3: line up their 8 entries, take the complex conjugate of T's, multiply, add. With 3 qubits each state is 8 numbers, so keeping S0, S1, S2 is cheap.</p>
+
+  <h3 id="improve-row1">6.4 Backward pass, row 1: layer 3 (the electric block)</h3>
+  <p><b>The basic step, for one angle, θ[24]:</b></p>
+<pre>Step 1. Take S2 (kept) and T.
+
+Step 2. Nudge up: θ[24] = 0.0678 + 0.01 = 0.0778,
+        the other 30 angles unchanged.
+        S3⁺ = layer 3 (with θ[24] = 0.0778)
+              applied to S2
+        o⁺  = ⟨T|S3⁺⟩ = 0.9089 − 0.1314i
+        L⁺  = 1 − |o⁺|² = 0.156652
+
+Step 3. Nudge down: θ[24] = 0.0678 − 0.01 = 0.0578
+        o⁻  = 0.9037 − 0.1408i
+        L⁻  = 0.163577
+
+Step 4. slope = (L⁺ − L⁻) / (2 × 0.01)
+              = (0.156652 − 0.163577) / 0.02
+              = −0.006925 / 0.02 = −0.3463
+
+Step 5. Put θ[24] back to 0.0678.</pre>
+  <p><b>No angle has changed.</b> We only learned something: the slope is negative, so turning θ[24] up lowers L.</p>
+  <p><b>Step 6. Loop:</b> steps 2–5 for each of the other 7 angles of layer 3:</p>
+  <div class="scroll"><table>
+    <tr><th>angle</th><th>slope</th></tr>
+    <tr><td class="m">θ[24]</td><td class="m">−0.3463</td></tr>
+    <tr><td class="m">θ[29]</td><td class="m">+0.1731</td></tr>
+    <tr><td class="m">θ[25], θ[27], θ[28], θ[30], θ[31], θ[32]</td><td class="m">0 (at these angles a small turn does not change the overlap)</td></tr>
+  </table></div>
+  <p><b>Step 7. Undo layer 3 on T</b> (apply the electric block backwards: its conjugate transpose, written layer 3†). The result is <b>B2</b>, "T with layer 3 undone", the target side for layer 2.</p>
+  <p><b>Check:</b> ⟨B2|S2⟩ = 0.9063 − 0.1361i = o, the same number as the forward pass.</p>
+
+  <h3 id="improve-undo">6.5 Why undoing layer 3 on T is allowed</h3>
+  <p><b>We never remove anything from the target's circuit.</b> The Trotter circuit that made T is not used again: T is just a final state (8 numbers). What we undo on T is <b>the trainable circuit's own layer 3</b>, the KAK + ZXZ block at its current angles. So it does not matter that it looks nothing like the Trotter circuit's electric gate.</p>
+  <p><b>Why the overlap stays the same:</b> a gate is a rotation (unitary). Rotate two arrows by the <b>same</b> rotation and the angle between them does not change, so their overlap does not change.</p>
+  <div class="scroll"><table>
+    <tr><th></th><th>trainable side</th><th>target side</th></tr>
+    <tr><td>before</td><td class="m">S3</td><td class="m">T</td></tr>
+    <tr><td>undo layer 3 on both</td><td>S3 → <b>S2</b> (this really removes layer 3)</td><td>T → <b>B2</b> (T is only rotated; nothing of its own circuit is removed)</td></tr>
+    <tr><td>overlap</td><td class="m">⟨T|S3⟩ = o</td><td class="m">⟨B2|S2⟩ = o</td></tr>
+  </table></div>
+  <p><b>Numbers, 1 qubit.</b> Assumption: S3 = 0.866|0⟩ + 0.5|1⟩, T = |1⟩, and the layer is R<sub>Y</sub>(60°). Undo it, R<sub>Y</sub>(−60°), on both:</p>
+<pre>S3 → |0⟩                    = S2
+T  → 0.5|0⟩ + 0.866|1⟩      = B2
+
+before: 0.866 × 0 + 0.5 × 1   = 0.5
+after:  1 × 0.5 + 0 × 0.866   = 0.5</pre>
+  <p class="hint">0.5|0⟩ + 0.866|1⟩ is not part of how T was made (T was just |1⟩). It is a helper: "T rotated back through the trainable layer". <b>B2 depends only on T and the trainable circuit's layer 3 at its current angles.</b> If we undid different layers on the two sides (say the Trotter circuit's layer 3 on T), the two rotations would differ and the overlap would change.</p>
+
+  <h3 id="improve-rows23">6.6 Rows 2 and 3: layers 2 and 1</h3>
+  <p><b>Row 2, layer 2 (the SWAP block).</b> Steps 1–7 again, with <b>S1 and B2</b> instead of S2 and T. For θ[17] (the SWAP's ZZ θ):</p>
+<pre>S2⁺ = layer 2 (with θ[17] = 0.7954)
+      applied to S1
+o⁺  = ⟨B2|S2⁺⟩,  L⁺ = 0.156652
+L⁻  = 0.163577   (θ[17] = 0.7754)
+slope = (0.156652 − 0.163577) / 0.02
+      = −0.3463</pre>
+  <p><b>Check, the long way:</b> nudge θ[17] in the full circuit, rerun all 3 layers, compare with T: slope −0.3463, the same. That is what B2 is for: it already holds "layer 3, then compare with T", so layer 3 is never rerun.</p>
+  <p>Step 6, the loop over the other angles of layer 2: θ[21] = +0.1731, θ[23] = −0.1731, the rest 0. <b>Step 7: undo layer 2 on B2</b>, giving <b>B1</b>.</p>
+  <p><b>Row 3, layer 1 (the pair block and the start ZXZs).</b> Steps 1–6 with <b>S0 and B1</b>. For θ[6]:</p>
+<pre>L⁺ = 0.155010,  L⁻ = 0.165246
+slope = (0.155010 − 0.165246) / 0.02
+      = −0.010236 / 0.02 = −0.5118</pre>
+  <p>θ[7] has the same slope, −0.5118. Also θ[9] = −0.1731, θ[12] = +0.1731, θ[14] = +0.1731, the rest 0. Nothing to undo after the first layer: the backward pass is done.</p>
+  <p><b>The whole backward pass:</b></p>
+  <div class="scroll"><table>
+    <tr><th>row</th><th>layer</th><th>state before it (kept)</th><th>target side after it</th><th>slopes</th><th>then</th></tr>
+    <tr><td class="m">1</td><td class="m">3</td><td class="m">S2</td><td class="m">T</td><td class="m">8</td><td>undo layer 3 on T → B2</td></tr>
+    <tr><td class="m">2</td><td class="m">2</td><td class="m">S1</td><td class="m">B2</td><td class="m">11</td><td>undo layer 2 on B2 → B1</td></tr>
+    <tr><td class="m">3</td><td class="m">1</td><td class="m">S0</td><td class="m">B1</td><td class="m">12</td><td>done: 31 slopes</td></tr>
+  </table></div>
+  <p class="hint">At every row the comparison is the same overlap: ⟨T|S3⟩ = ⟨B2|S2⟩ = ⟨B1|S1⟩ = ⟨B0|S0⟩ = 0.9063 − 0.1361i (all four computed). Each row only looks at it from just before a different layer.</p>
+
+  <h3 id="improve-update">6.7 Only now: update all 31 angles at once</h3>
+  <p>new θ = old θ − step × slope. <b>Step = 0.5 (assumption);</b> L-BFGS-B, which our training uses, picks its own step.</p>
+  <div class="scroll"><table>
+    <tr><th>angle</th><th>layer</th><th>old</th><th>slope</th><th>new</th></tr>
+    <tr><td class="m">θ[24]</td><td class="m">3</td><td class="m">0.0678</td><td class="m">−0.3463</td><td class="m">0.0678 + 0.1731 = 0.2409</td></tr>
+    <tr><td class="m">θ[29]</td><td class="m">3</td><td class="m">−0.6497</td><td class="m">+0.1731</td><td class="m">−0.6497 − 0.0866 = −0.7363</td></tr>
+    <tr><td class="m">θ[17]</td><td class="m">2</td><td class="m">0.7854</td><td class="m">−0.3463</td><td class="m">0.7854 + 0.1731 = 0.9585</td></tr>
+    <tr><td class="m">θ[21]</td><td class="m">2</td><td class="m">−3.5343</td><td class="m">+0.1731</td><td class="m">−3.5343 − 0.0866 = −3.6209</td></tr>
+    <tr><td class="m">θ[23]</td><td class="m">2</td><td class="m">3.5343</td><td class="m">−0.1731</td><td class="m">3.5343 + 0.0866 = 3.6209</td></tr>
+    <tr><td class="m">θ[6], θ[7]</td><td class="m">1</td><td class="m">0.18</td><td class="m">−0.5118</td><td class="m">0.18 + 0.2559 = 0.4359</td></tr>
+    <tr><td class="m">θ[9]</td><td class="m">1</td><td class="m">−1.5708</td><td class="m">−0.1731</td><td class="m">−1.5708 + 0.0866 = −1.4842</td></tr>
+    <tr><td class="m">θ[12]</td><td class="m">1</td><td class="m">−1.5708</td><td class="m">+0.1731</td><td class="m">−1.5708 − 0.0866 = −1.6574</td></tr>
+    <tr><td class="m">θ[14]</td><td class="m">1</td><td class="m">1.5708</td><td class="m">+0.1731</td><td class="m">1.5708 − 0.0866 = 1.4842</td></tr>
+    <tr><td>the other 21</td><td></td><td></td><td class="m">0</td><td>unchanged</td></tr>
+  </table></div>
+  <p><b>L goes from 0.1601 to 0.1286.</b> That is one training step. Training step 2 repeats the forward and backward passes with the new angles.</p>
+
+  <h3 id="improve-fast">6.8 How the real code does it faster</h3>
+  <p>The example above shows <b>what</b> is computed. At 120 qubits the code computes the same slopes, with three savings:</p>
+  <div class="scroll"><table>
+    <tr><th></th><th>the 3-qubit example</th><th>the code at 120 qubits</th></tr>
+    <tr><td>slope of one angle</td><td>nudge it, apply the whole layer to S2, compare</td><td>combine the state before and the target side after <b>once</b> per block into a table of 16 numbers, with a hole where the block sits; o = sum of (table × block's 4 × 4 entries). A nudge (h = 10⁻⁶) changes only the 4 × 4 block: 16 multiplications</td></tr>
+    <tr><td>which forward states it keeps</td><td>S0, S1, S2</td><td>one every 6 layers; the others are rebuilt from the nearest kept one when the backward pass needs them</td></tr>
+    <tr><td>how states are stored</td><td>8 numbers each</td><td>trimmed chains (links ≤ max_bond, Tensor Chain Workbook): about 8 GB in all</td></tr>
+  </table></div>
+  <p class="hint"><b>The price:</b> trimming throws a little away, so the slopes are close but not exact.</p>
+
+  <h3 id="improve-symbols">6.9 The recipe in symbols</h3>
+<pre>K layers, start S_0 = |0…0⟩, target T.
+
+1. forward:   S_k = layer k applied to S_(k−1),
+              k = 1 … K   (keep them)
+
+2. compare:   o = ⟨T|S_K⟩,  L = 1 − |o|²
+
+3. backward:  B_K = T
+              B_(k−1) = layer k undone on B_k
+              (undo = layer k†: transpose
+               and complex conjugate)
+
+4. every angle θ in layer k:
+   S_k⁺ = layer k with θ + h, on S_(k−1)
+   S_k⁻ = layer k with θ − h, on S_(k−1)
+   L⁺ = 1 − |⟨B_k|S_k⁺⟩|²   (L⁻ likewise)
+   slope = (L⁺ − L⁻) / (2h)
+
+5. after all K layers, every angle:
+   new θ = old θ − step × slope</pre>
+  <p class="hint">⟨B_k|S_k⟩ = o for every k, because the same layers are undone on both sides.</p>
+
+  <h3 id="improve-hand">6.10 By hand: the smallest case</h3>
+  <div class="key">
+  <p><b>Assumptions:</b> one qubit; two layers, R<sub>Y</sub>(θ₁) then R<sub>Y</sub>(θ₂); start |0⟩; target T = |1⟩; all amounts real. R<sub>Y</sub>(θ)|0⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩ (section 3).</p>
+  <p><b>Part A: the derivation (symbols only)</b></p>
+<pre>Step 1. Forward, before layer 2:
+   S1 = R_Y(θ₁)|0⟩
+      = cos(θ₁/2)|0⟩ + sin(θ₁/2)|1⟩
+
+Step 2. Target side after layer 1:
+   B1 = T with layer 2 undone
+      = R_Y(−θ₂)|1⟩
+      = sin(θ₂/2)|0⟩ + cos(θ₂/2)|1⟩
+
+Step 3. Compare (the overlap):
+   o = ⟨B1|S1⟩
+     = sin(θ₂/2) cos(θ₁/2)
+       + cos(θ₂/2) sin(θ₁/2)
+
+Step 4. Slope of θ₁ (only S1 depends on θ₁):
+   ∂S1/∂θ₁ = −½ sin(θ₁/2)|0⟩ + ½ cos(θ₁/2)|1⟩
+   ∂o/∂θ₁ = ⟨B1|∂S1/∂θ₁⟩
+          = −½ sin(θ₂/2) sin(θ₁/2)
+            + ½ cos(θ₂/2) cos(θ₁/2)
+
+Step 5. Chain to L (F = o², L = 1 − F):
+   ∂L/∂θ₁ = (−1) × (2o) × ∂o/∂θ₁</pre>
+  <p class="hint">Step 4 is the exact version of "nudge θ₁ and compare": instead of L⁺ and L⁻, take the derivative of S1.</p>
+  <p><b>Part B: the example, θ₁ = θ₂ = 30°</b></p>
+<pre>sin 15° = 0.259,  cos 15° = 0.966
+
+Step 1.  S1 = 0.966|0⟩ + 0.259|1⟩
+Step 2.  B1 = 0.259|0⟩ + 0.966|1⟩
+Step 3.  o = 0.259 × 0.966 + 0.966 × 0.259
+           = 0.25 + 0.25 = 0.5
+Step 4.  ∂o/∂θ₁ = −½ × 0.259 × 0.259
+                  + ½ × 0.966 × 0.966
+                = −0.034 + 0.467 = 0.433
+Step 5.  ∂L/∂θ₁ = (−1) × (2 × 0.5) × 0.433
+                = −0.433</pre>
+  <p><b>Check:</b> 30° + 30° = 60°, section 3's circuit, and the same slope, −0.433 ✓.</p>
+  </div>
+</section>
+
+<section id="jax">
+  <h2>7. How jax gets the same slopes</h2>
+  <div class="key">
+    <p><b>jax does not nudge.</b> Nudging one angle and rerunning the whole circuit is section 2's slow way: 31 angles × 2 runs = 62 full runs. jax gets <b>all 31 slopes from one forward pass and one backward pass</b>, like section 6, and its slopes are <b>exact</b> (no nudge size h).</p>
+  </div>
+  <p>Real numbers on the 3-qubit example (jax from IBM's library, which our training uses):</p>
+  <div class="scroll"><table>
+    <tr><th>angle</th><th>nudging, h = 0.01 (section 6)</th><th>jax</th></tr>
+    <tr><td class="m">θ[24]</td><td class="m">−0.34626</td><td class="m">−0.34628</td></tr>
+    <tr><td class="m">θ[29]</td><td class="m">+0.17315</td><td class="m">+0.17314</td></tr>
+    <tr><td class="m">θ[17]</td><td class="m">−0.34626</td><td class="m">−0.34628</td></tr>
+    <tr><td class="m">θ[6]</td><td class="m">−0.51179</td><td class="m">−0.51182</td></tr>
+  </table></div>
+  <p class="hint">The small differences are from h = 0.01 not being tiny. jax's L is 0.16006, the same as section 6.</p>
+
+  <h3 id="jax-steps">7.1 Step by step, on the 3-qubit example</h3>
+  <p class="hint">Simplification: jax works layer by layer here, like section 6. Its real order is in 7.3.</p>
+  <p><b>Forward:</b> the same S0 → S1 → S2 → S3, then o and L. The difference: jax <b>writes down every multiplication and keeps every result</b>: S1, S2, S3, and every small step inside each block (each ZXZ, the KAK, the cos and sin of every angle).</p>
+  <p><b>Backward:</b> jax walks that record from the end, with the chain rule at every step:</p>
+  <div class="scroll"><table>
+    <tr><th>step</th><th>what jax does</th><th>what it gets</th></tr>
+    <tr><td class="m">1</td><td>L = 1 − |o|²: slope of L with respect to o</td><td>one number</td></tr>
+    <tr><td class="m">2</td><td>o = ⟨T|S3⟩ = sum over the 8 entries of (T entry, conjugated) × (S3 entry). So the slope of o with respect to each S3 entry is the matching T entry</td><td>a "message" at S3, <b>equal to T</b></td></tr>
+    <tr><td class="m">3</td><td>S3 = layer 3 applied to S2. Passing the message back through layer 3 = undoing layer 3 on it</td><td>the message at S2, <b>equal to B2</b></td></tr>
+    <tr><td class="m">4</td><td>combine the message after the block (T) with the kept state before it (S2)</td><td>the same 16-number table as 6.8</td></tr>
+    <tr><td class="m">5</td><td>chain rule through the formula of each table entry (cos and sin of the angle)</td><td>each angle's <b>exact</b> slope</td></tr>
+    <tr><td class="m">6</td><td>repeat for layer 2 (S1 with B2) and layer 1 (S0 with B1)</td><td>all 31 slopes</td></tr>
+  </table></div>
+  <p><b>So jax's backward pass is the same T → B2 → B1 walk.</b> Nobody tells it "undo the layer": it falls out of the chain rule. jax does not know what S2 or B2 mean; to it they are just numbers in the record (S2) and numbers flowing back (B2).</p>
+
+  <h3 id="jax-memory">7.2 Why jax keeps every value</h3>
+  <p>Walking back needs the local slopes, and each local slope is built from <b>forward values</b>:</p>
+  <div class="scroll"><table>
+    <tr><th>forward step</th><th>its local slope</th><th>value needed from the record</th></tr>
+    <tr><td class="m">y = a × b</td><td>slope of y with respect to a = b</td><td>b</td></tr>
+    <tr><td class="m">S3 = layer 3 on S2</td><td>slope with respect to layer 3's entries uses S2</td><td>S2</td></tr>
+    <tr><td class="m">entry = cos(θ[24]/2)</td><td class="m">−½ sin(θ[24]/2)</td><td>θ[24]</td></tr>
+  </table></div>
+  <p>So "keeps every result" means: every value some local slope will need later. At 3 qubits that is a few hundred numbers. At 120 qubits, untrimmed, it is what asked for <b>1.5 TB</b>.</p>
+
+  <h3 id="jax-compare">7.3 jax and the improvement side by side</h3>
+  <div class="scroll"><table>
+    <tr><th></th><th>jax</th><th>the improvement (section 6)</th></tr>
+    <tr><td>forward + backward, all slopes at once</td><td>yes</td><td>yes</td></tr>
+    <tr><td>how B2, B1 are made</td><td>chain rule on the record (automatic)</td><td>written by hand: undo the layer</td></tr>
+    <tr><td>16-number table → angle's slope</td><td>exact derivative of cos and sin</td><td>nudge the 4 × 4 block, h = 10⁻⁶</td></tr>
+    <tr><td>what it keeps from the forward pass</td><td><b>every</b> value</td><td>one state every 6 layers</td></tr>
+    <tr><td>trimmed?</td><td><b>no</b>: exact</td><td>yes, to max_bond</td></tr>
+    <tr><td>order of work</td><td>the planner (cotengra) picks an order over the whole network, target included, not layer by layer</td><td>layer by layer</td></tr>
+    <tr><td>120 qubits</td><td class="m">1.5 TB</td><td class="m">about 8 GB</td></tr>
+    <tr><td>slopes</td><td>exact</td><td>close (trimming)</td></tr>
+  </table></div>
+  <p class="hint"><b>The method is the same; what differs is what gets stored.</b> Next check for us: compare the two on our 12-qubit hadron circuit before trusting the improvement at 120 qubits.</p>
+</section>
+
+</main>
+</div>
+<script>
+function mark(sec){sec.querySelectorAll('.q').forEach(q=>{const ins=[...q.querySelectorAll('input[data-ans]')];q.classList.remove('ok','no');
+  if(ins.every(i=>!i.value.trim()))return;
+  const ok=ins.every(i=>{const v=parseFloat(i.value.replace('−','-').replace(/,/g,''));return !isNaN(v)&&Math.abs(v-parseFloat(i.dataset.ans))<=parseFloat(i.dataset.tol||'0.01');});
+  q.classList.add(ok?'ok':'no');});}
+document.querySelectorAll('[data-check]').forEach(b=>b.onclick=()=>mark(b.closest('section')));
+document.querySelectorAll('[data-reveal]').forEach(b=>b.onclick=()=>{const s=b.closest('section');s.querySelectorAll('input[data-ans]').forEach(i=>i.value=i.dataset.ans);mark(s);});
+const allIns=[...document.querySelectorAll('input[data-ans]')];
+allIns.forEach((inp,i)=>{inp.dataset.k='c'+i;});
+const SAVE='circuit-backprop-workbook-answers';
+function save(){try{const o={};allIns.forEach(i=>{if(i.value.trim())o[i.dataset.k]=i.value;});localStorage.setItem(SAVE,JSON.stringify(o));}catch(e){}}
+function restore(){try{const o=JSON.parse(localStorage.getItem(SAVE)||'{}');allIns.forEach(i=>{if(o[i.dataset.k]!=null)i.value=o[i.dataset.k];});
+  document.querySelectorAll('section').forEach(s=>{if(s.querySelector('input[data-ans]'))mark(s);});}catch(e){}}
+allIns.forEach(i=>i.addEventListener('input',save));
+document.querySelectorAll('[data-reveal]').forEach(b=>b.addEventListener('click',save));
+restore();
+</script>
+</body>
+</html>
