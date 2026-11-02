@@ -21,7 +21,7 @@ The tutorial compresses nothing: it sends the full deep circuit (>3,400 two-qubi
 | `hadron-aqc/hadron_aqc_utils.py` | copies of the hadron + Algorithm 1 functions, **plus the library route** (the AQC recipe written once, shared by every size section and the cluster script): `build_target_using_lib`, `check_target`, `build_cheap_trainable_circuit`, `train_to_target`, `count_cnots`, `count_and_verify`, `make_simulator_settings`, `mps_fidelity`, `tensors_to_library_target`. Never modify `AQC/aqctensor-algorithm1.ipynb`. |
 | `hadron-aqc/notebooks/hadron-aqc-mapping-edu.ipynb` | the trainable circuit built by hand (old OPTIONAL section: brickwork + `build_aqc_hadron_circuit`, 4 tables, annotated picture). Runs on its own; = library (147 CX at 2 steps). Place to try block changes. |
 | `hadron-aqc/notebooks/hadron-aqc-tebd.ipynb` | the AQC-Tensor notebook. Imports from the utils file (so it builds the current circuit) and is set to 11 steps / 5-step start, but **not rerun since the 2026-10-22 circuit change**: its outputs and tables are from the old circuit, it loads `results/trained_aqc_hadron_{12q,32q}_k3.npz` (old circuit, 3-step start), and it trains **without the cotengra planner** (only the script has it; its 32-qubit section would need ~50 GB). **Use the script for runs; notebook rewrite pending.** Kernel: `qgss26`. |
-| `hadron-aqc/scripts/run_hadron_aqc.py` | one command per run: `python scripts/run_hadron_aqc.py --sites --steps --coarse-steps --target-bond --training-bond --states [vacuum] [meson] --gradient jax|explicit [--max-hours H] [--planner-minutes M] [--resume]`; `--planner-minutes` turns on the cotengra planner during training (jax: far less RAM and time). Writes `results/<qubits>q_<steps>steps_<k>cheap_target<b>_training<b>_<gradient>[_<state>]/` with `summary.md` (table), `run.log`, `results.json`, `angles.npz`, `target_<state>.pkl` (not in git). Log line + saved angles after every training step; `--max-hours` ends training cleanly; `--resume` loads the saved target and continues a killed run; rechecks at 2× training bond. Handover docs: `scripts/README.md` (incl. "Which gradient?"), `scripts/requirements.txt` (partial clone: `git sparse-checkout set hadron-aqc/scripts`, ~1 MB). |
+| `hadron-aqc/scripts/run_hadron_aqc.py` | one command per run: `python scripts/run_hadron_aqc.py --sites --steps --coarse-steps --target-bond --training-bond --states [vacuum] [meson] --gradient jax|explicit|layer [--max-hours H] [--planner-minutes M] [--resume]`; `--planner-minutes` turns on the cotengra planner during training (jax: far less RAM and time). Writes `results/<qubits>q_<steps>steps_<k>cheap_target<b>_training<b>_<gradient>[_<state>]/` with `summary.md` (table), `run.log`, `results.json`, `angles.npz`, `target_<state>.pkl` (not in git). Log line + saved angles after every training step; `--max-hours` ends training cleanly; `--resume` loads the saved target and continues a killed run; rechecks at 2× training bond. Handover docs: `scripts/README.md` (incl. "Which gradient?"), `scripts/requirements.txt` (partial clone: `git sparse-checkout set hadron-aqc/scripts hadron-aqc/layer_gradient`, ~1 MB). |
 | `hadron-aqc/results/` | trained angles, run folders; `targets_120qubits_merged/` (8.4 GB, old circuit, not in git). |
 | `hadron-aqc/tests/` | checks: circuit vs the group's QASM files, starting bits, mass signs, target health, trainable circuit (start + shape), quick training. Which to run when: `AGENTS.md` (repo root). |
 
@@ -90,13 +90,22 @@ x = 200 is expected. All x = 200 results before 2026-10-26 used mass 0.03.
       x = 100 meson 0.996135 (converged, 5.6 h), vacuum 0.994136; x = 200 vacuum 0.8438 (24 h cap; target norm violation
       0.025, too high), meson 0.9087 at step 61 (flat, +0.00001 per 17-min step; hit the 30 h Slurm limit, no summary).
       Confirms the 20-qubit diagnosis: at x = 200 the 5-step circuit is too small.
-- [ ] x = 200 at 40 qubits with a 6-step start (not resuming the 5-step run); target bond above 1024 for vacuum.
+- [x] x = 200 at 40 qubits with a 6-step start (not resuming the 5-step run) — 2026-10-31: the collaborator has moved
+      to a 6-step start on the HPC, based on our analysis. Still open: target bond above 1024 for x = 200 vacuum.
 - [ ] Waiting: a collaborator runs our script on the group's HPC (120 qubits, x = 100 and 200); compare with their
       x = 100 result (7010 → 3548 CNOTs, depth 147 → 75, fidelity 0.990).
 - [ ] Hybrid circuit (the professor's plan): first 10 steps (T11) compressed to a 6-step AQC circuit, then 7 ordinary
       Trotter steps, reaching 15–17 time steps. Needs: append steps 11, 12, … in the right qubit layout (step 1 skips a
       SWAP layer, later steps don't); check the hybrid against the exact full circuit at 12–20 qubits; count CNOTs and
       depth vs the full circuit. Spec first.
+- [ ] Layer gradient (`layer_gradient/`, `--gradient layer`): slopes from a forward pass + backward layer pass on
+      trimmed chains, memory set by the bond. Migration in `layer_gradient/MIGRATION.md`; then runs 12 → 20 → 40 qubits
+      against jax, then 120 qubits (x = 200) on the HPC. 2026-11-02, 12 qubits, x = 200, meson, ZZ zeroed out, bond 64:
+      0.995298 (jax 32-bit: 0.994759; equal at step 134, then 64-bit keeps improving to step ~500), 301 CNOTs, 7.9 min
+      vs 0.2 min (1077 steps; 0.4 s per step, mostly building the 4×4 blocks). 16 qubits, meson, bond 256 (exact):
+      5-step start jax 0.984622 (83 steps) / layer 0.984650 at step 83, 0.984771 final, 418 CNOTs; **6-step start jax
+      0.996206 (82 steps) / layer 0.996233 at step 82, 0.996386 by step 300**, CNOTs 934 → 504, depth 162 → 87,
+      2.6 vs 44 min.
 - [ ] Confirm with the group: x = 100 also compressed from T11 (not the published T20).
 - [ ] Send the group our QASM (T11, both x, 120 qubits) to cross-check.
 - [ ] Ask the group for corrected x = 200 files (mass 0.0424264) for the reference test.

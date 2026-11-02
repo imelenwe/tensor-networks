@@ -21,6 +21,7 @@ loop-string-hadron Trotter circuit (up to 120 qubits) with IBM's AQC-Tensor.
 |---|---|
 | `hadron_aqc_utils.py` | **single source of truth**: circuit, strengths, target, trainable circuit, training, CNOT counts. Change the circuit here only. |
 | `scripts/run_hadron_aqc.py` | the long runs (laptop or cluster); `scripts/README.md` has the commands |
+| `layer_gradient/` | the layer gradient (`--gradient layer`): slopes from a forward pass and a backward layer pass on trimmed chains; `MIGRATION.md` |
 | `tests/` | the checks in "Verification" below |
 | `notebooks/*-edu.ipynb` | learning notebooks; import from the utils file, never copy its code |
 | `notebooks/hadron-aqc-tebd.ipynb` | older results notebook; due for a rewrite, don't extend it |
@@ -46,6 +47,7 @@ Every change is checked before it is called done. Report the check output, not j
 | docs, `spec.md`, `learn/` pages, notebooks' text, results folders | nothing; for pages, the no-names scan |
 | plotting, logging, the script's output format | fast tests (`python -m pytest tests`, ~2 s) |
 | `hadron_aqc_utils.py` training / counting / trainable-circuit code | fast tests + `--run-slow` (~30 s) |
+| `layer_gradient/` (the layer gradient) | fast tests + `--run-slow -k layer_gradient` |
 | the circuit or its strengths (`construct_circuit`, constants) | fast tests + `--run-slow` + reference files |
 | reading files, answering questions, checking a running job | nothing |
 
@@ -77,6 +79,9 @@ HADRON_REFERENCE_QASM=<folder> python -m pytest tests    # + compare with the gr
 | `test_trainable_circuit_shape` | 1,167 angles; two-qubit blocks: 50 pair, 30 electric, 47 SWAP |
 | `test_zero_out_zz` | zeroing out ZZ fixes exactly the 80 pair + electric ZZ angles (1,087 angles left), no SWAP's |
 | `test_quick_training` (slow) | 12-qubit training still reaches fidelity ≥ 0.995 with ≤ 360 CNOTs (≥ 0.994, ≤ 310 with ZZ zeroed out) |
+| `test_layer_gradient.py` (fast) | the layer gradient at 6 qubits: every layer's ⟨B_k\|S_k⟩ = the exact overlap; loss = exact; slopes = nudging the exact loss; saving fewer states changes nothing; a small `max_bond` really trims |
+| `test_slopes_match_jax_12_qubits` (slow) | the layer gradient's loss and all 1,087 slopes = 64-bit jax's on our 12-qubit circuit |
+| `test_quick_training_layer_gradient` (slow) | 12-qubit training with the layer gradient reaches ≥ 0.994 with ≤ 310 CNOTs (ZZ zeroed out) |
 
 - **Expected numbers in the tests change only on purpose**, and the commit message says why.
 

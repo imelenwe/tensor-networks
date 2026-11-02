@@ -4,7 +4,7 @@ Compresses the SU(2) hadron (loop-string-hadron) Trotter circuit with AQC-Tensor
 
 1. builds the **target**: the full circuit as an MPS, cut to `--target-bond`, plus a health check (saved, so `--resume` doesn't rebuild it);
 2. builds a **cheap circuit** (same circuit, fewer and bigger Trotter steps) that IBM's library turns into a trainable circuit;
-3. **trains** its angles to match the target (L-BFGS-B; slopes from `--gradient jax` or `explicit`, see below);
+3. **trains** its angles to match the target (L-BFGS-B; slopes from `--gradient jax`, `explicit` or `layer`, see below);
 4. **checks** the trained circuit after transpiling, and again at 2× the training bond;
 5. **counts** CNOTs and depth, original vs trained (level 3, linear chain).
 
@@ -17,14 +17,19 @@ Python 3.12. Clone only the part of the repository the script needs (about 1 MB)
 ```bash
 git clone --filter=blob:none --sparse <this repository's URL>
 cd tensor-networks
-git sparse-checkout set hadron-aqc/scripts
+git sparse-checkout set hadron-aqc/scripts hadron-aqc/layer_gradient
 cd hadron-aqc
 pip install -r scripts/requirements.txt
 ```
 
-This brings `hadron-aqc/scripts/` and the files directly in `hadron-aqc/` (including `hadron_aqc_utils.py`, which the script imports from one folder up), and nothing else. Later, `git pull` picks up fixes.
+This brings `hadron-aqc/scripts/`, `hadron-aqc/layer_gradient/` (the code behind `--gradient layer`) and the files
+directly in `hadron-aqc/` (including `hadron_aqc_utils.py`, which the script imports from one folder up), and nothing
+else. Later, `git pull` picks up fixes.
 
-Check: `python scripts/run_hadron_aqc.py --help` lists the options.
+**Already cloned before 2026-11-02?** Add the new folder once: `git pull && git sparse-checkout add hadron-aqc/layer_gradient`.
+(jax and explicit runs work without it; `--gradient layer` needs it.)
+
+Check: `python scripts/run_hadron_aqc.py --help` lists the options, including `--gradient {jax,explicit,layer}`.
 
 ## Commands to run (copy-paste, from the `hadron-aqc` folder)
 
@@ -57,7 +62,7 @@ python scripts/run_hadron_aqc.py --x $X --sites 60 --steps 11 --coarse-steps 5 -
 | what to set | how |
 |---|---|
 | `--sites` | qubits ÷ 2; use an even number (16 = 32 qubits, 20 = 40, 60 = 120) |
-| `--coarse-steps` | 5 for both x. For x = 200, also try **7** (better start, more CNOTs, ~1.4× RAM and time per step; its own `_7cheap_` folder) |
+| `--coarse-steps` | 5 for x = 100; **6 for x = 200** (5 is too small there: 16 qubits 0.985 vs 0.996 with 6; more CNOTs, its own `_6cheap_` folder). 7 is a further option for x = 200 |
 | `--planner-minutes` | planning time for the training contraction, done once per job: 5 at 32 qubits, 10 at 40, 30 at 120 |
 | `--max-hours` | training stops cleanly after this; set it ~6 h below the job's wall-time limit (target build + final counting) |
 | memory to request | see the table below |
@@ -77,6 +82,30 @@ finished states are skipped, the saved target and contraction plan are reused, a
 
 **What to send back:** the `results/<run name>/` folder (without the large `target_*.pkl`) and the `stderr_*.log` file.
 
+**3. Layer gradient (`--gradient layer`, the MPS gradient).** Same script, same options, plus `--stride`, `--gpu`,
+`--single-precision`. It trains at `--training-bond` (like explicit) but gets all slopes from one forward pass and one
+backward layer pass, so memory is set by the bond, not by the circuit (code in `layer_gradient/`; it runs the code
+in `layer_gradient/source/`, unchanged). It works in 64-bit, so it rarely stops by itself: always set `--max-hours`.
+
+Quick test (12 qubits, ~8 min on a laptop CPU). Expected (measured 2026-11-02, x = 200, 5-step start): fidelity
+**0.995298**, CNOTs 673 → 301, "converged". On a GPU, run the same line with `--gpu` (needs `pip install cupy-cuda12x`;
+**our `--gpu` path is not yet tested**): it should give the same fidelity.
+
+```bash
+python scripts/run_hadron_aqc.py --x 200 --sites 6 --steps 11 --coarse-steps 5 --target-bond 64 --training-bond 64 --states meson --gradient layer --zero-out-zz --max-hours 1
+```
+
+Measured against jax (2026-11-02, x = 200, meson, ZZ zeroed out, bond = exact, laptop CPU):
+
+| size, start | jax | layer |
+|---|---|---|
+| 12 qubits, 5-step | 0.994759 (134 steps), 301 CNOTs, 0.2 min | **0.995298** (equal to jax at step 134, then keeps improving), 301 CNOTs, 7.9 min |
+| 16 qubits, 6-step | 0.996206 (82 steps), 504 CNOTs, 2.6 min | **0.996386** (0.996233 at step 82), 504 CNOTs, 44 min (2–3 s per step) |
+
+Larger runs: the same lines as in 2., with `--gradient layer --max-hours <h>` instead of `--gradient jax --planner-minutes <m>`.
+Time per step grows with the bond (each block needs an SVD whose cost grows like bond³): CPU is fine up to bond ~512;
+for bond 1024 at 120 qubits use a GPU (`--gpu --single-precision`). Not yet measured on our circuit beyond 16 qubits.
+
 ## Options
 
 | option | meaning |
@@ -88,7 +117,10 @@ finished states are skipped, the saved target and contraction plan are reused, a
 | `--target-bond` | max bond when building the target |
 | `--training-bond` | max bond when simulating the circuit during training (the main cost) |
 | `--states` | `vacuum`, `meson`, or `vacuum meson` (run one per job to work in parallel) |
-| `--gradient` | `jax` or `explicit`: how training gets its slopes (see "Which gradient?") |
+| `--gradient` | `jax`, `explicit` or `layer`: how training gets its slopes (see "Which gradient?") |
+| `--stride` | `layer` only: keep the forward state before every this-many layers; the rest are rebuilt in the backward layer pass (default 6; more = less memory, a little more time) |
+| `--gpu` | `layer` only: run on a GPU (needs `cupy`, not in `requirements.txt`); kept states wait in host memory |
+| `--single-precision` | `layer` only: complex64 instead of complex128, half the memory |
 | `--max-hours` | stop each state's training after this many hours, then finish it normally (counts, table). Needed with 64-bit numbers (explicit, or jax with `JAX_ENABLE_X64=True`): they rarely stop by themselves |
 | `--planner-minutes` | jax only: let cotengra plan the order of the big training contraction for this many minutes (5 up to ~40 qubits, ~30 at 120). Same results, far less memory and time; the plan is saved in `contraction_plans/` and reused by `--resume`. Default: off |
 | `--zero-out-zz` | keep the ZZ angle at 0 in every two-qubit block where it starts at 0 (pair and electric blocks): those compile to 2 CNOTs instead of 3. 12 qubits: CNOTs ~350 → 301, two-qubit depth 82 → 72, fidelity −0.001. The run folder gets `_zerozz`. |
@@ -98,12 +130,16 @@ Strengths come from `--x` through `strengths_for_x` in `hadron_aqc_utils.py`, pe
 
 ## Which gradient?
 
-| | `jax` | `explicit` |
-|---|---|---|
-| what training simulates | the **exact** circuit: `--training-bond` is **ignored** during training | the circuit cut to `--training-bond` |
-| result | trains toward the true answer | correct only if `--training-bond` is large enough; too small and it trains a blurred circuit |
-| memory | grows with circuit size: ~1 GB at 12 qubits, ~50 GB at 32 (32-bit), ~91 GB (64-bit) | small: ~0.3 GB at 12 qubits, ~2 GB at 32 |
-| numbers | 32-bit by default (stops by itself); `JAX_ENABLE_X64=True` for 64-bit | always 64-bit |
+| | `jax` | `explicit` | `layer` |
+|---|---|---|---|
+| what training simulates | the **exact** circuit: `--training-bond` is **ignored** during training | the circuit cut to `--training-bond` | the circuit cut to `--training-bond` |
+| how it gets the slopes | records every step, then the chain rule backwards | one full chain overlap per angle | one forward pass + one **backward layer pass** (undo each layer on the target), all slopes of a layer at once (`layer_gradient/`) |
+| result | trains toward the true answer | correct only if `--training-bond` is large enough; too small and it trains a blurred circuit | the same as explicit |
+| memory | grows with circuit size: ~1 GB at 12 qubits, ~50 GB at 32 (32-bit), ~91 GB (64-bit) | small: ~0.3 GB at 12 qubits, ~2 GB at 32 | small: a few chains at `--training-bond` |
+| numbers | 32-bit by default (stops by itself); `JAX_ENABLE_X64=True` for 64-bit | always 64-bit | 64-bit, or 32-bit with `--single-precision` |
+
+`layer` at 12 qubits (meson, ZZ zeroed out, bond 64 = exact): loss and all 1,087 slopes equal 64-bit jax's to 3e-13 / 2e-9
+(`tests/test_layer_gradient.py`); 0.4 s per training step, most of it building the 4×4 blocks. Not yet measured at 32+ qubits on our circuit.
 
 Measured at 32 qubits, 20 steps, meson, training bond 256, fidelity checked at bond 1024: jax **0.991**, explicit **0.949**. At 20 steps the state needs ~bond 1024, so explicit at 256 is too blurred. **Use jax unless memory doesn't allow it.** In both cases `--training-bond` still sets the bond of the printed fidelities, and the recheck uses 2× it. **With jax, trust the row "fidelity reached in training (exact, jax)" in `summary.md`:** the other fidelities are simulated at the training bond (and 2× it), which at 20 steps is too small to see the state (32 qubits, vacuum: 0.99 in training vs 0.19 at bond 256).
 

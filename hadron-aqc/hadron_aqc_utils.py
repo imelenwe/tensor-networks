@@ -368,8 +368,11 @@ def make_simulator_settings(max_bond=None, gradient="jax"):
     gradient (how training gets its slopes):
       "jax":      the library trains on the exact circuit and IGNORES max_bond (best results, memory grows with circuit size)
       "explicit": IBM's own gradient on the bond-limited MPS, so max_bond IS applied (little memory; blurred if max_bond is too small)
+      "layer":    our layer gradient (layer_gradient/, given to train_to_target separately); these settings then only
+                  simulate, so they use "explicit", which needs no jax
     Simulations outside training (printed fidelities, rechecks) always use max_bond."""
-    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond, cutoff=TRAINING_SVD_CUTOFF), autodiff_backend=gradient)
+    autodiff_backend = "explicit" if gradient == "layer" else gradient
+    return QuimbSimulator(partial(qtn.CircuitMPS, max_bond=max_bond, cutoff=TRAINING_SVD_CUTOFF), autodiff_backend=autodiff_backend)
 
 
 def mps_fidelity(mps_a, mps_b):
@@ -438,11 +441,18 @@ def zero_out_zz_angles(ansatz, starting_angles):
     return zeroed_ansatz, starting_angles[[position[angle] for angle in zeroed_ansatz.parameters]]
 
 
-def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=TRAINING_MAX_STEPS, progress=None, planner=None):
+def train_to_target(ansatz, starting_angles, target_mps, simulator_settings, maxiter=TRAINING_MAX_STEPS, progress=None, planner=None,
+                    layer_gradient: Optional["LayerGradientSettings"] = None):
     """Turn the angles until the trainable circuit matches the target (L-BFGS-B, exact slopes from the library).
     progress: optional function, called after every training step with the current fidelity and angles.
-    planner: optional make_contraction_planner(); used only inside this training (jax), never for building targets."""
-    training_objective = MaximizeStateFidelity(target_mps, ansatz, simulator_settings)
+    planner: optional make_contraction_planner(); used only inside this training (jax), never for building targets.
+    layer_gradient: optional LayerGradientSettings; then the slopes come from our layer gradient (at its max_bond)
+                    instead of the library, and simulator_settings is not used for training."""
+    if layer_gradient is not None:
+        from layer_gradient import LayerGradientObjective   # only here: jax / explicit runs don't need the folder
+        training_objective = LayerGradientObjective(ansatz, target_mps, layer_gradient)
+    else:
+        training_objective = MaximizeStateFidelity(target_mps, ansatz, simulator_settings)
 
     def after_each_step(intermediate_result):   # scipy calls this after every step; .fun = 1 - fidelity, .x = angles
         if progress is not None:

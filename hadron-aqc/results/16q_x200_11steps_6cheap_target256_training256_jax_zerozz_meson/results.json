@@ -1,0 +1,42 @@
+{
+  "settings": {
+    "x": 200.0,
+    "sites": 8,
+    "steps": 11,
+    "coarse_steps": 6,
+    "target_bond": 256,
+    "training_bond": 256,
+    "states": [
+      "meson"
+    ],
+    "gradient": "jax",
+    "stride": 6,
+    "gpu": false,
+    "single_precision": false,
+    "resume": false,
+    "max_hours": null,
+    "planner_minutes": 2.0,
+    "zero_out_zz": true
+  },
+  "started": "2026-11-02 12:37",
+  "meson": {
+    "norm_violation": 0.0,
+    "count_of_filled_seats": 8.0,
+    "angles": 1808,
+    "fidelity_before": 0.8620678879397855,
+    "fidelity_in_training": 0.9962055983487517,
+    "fidelity_after": 0.9962303690408639,
+    "fidelity_recheck": 0.9962303690408639,
+    "training_steps": 82,
+    "stopped": "converged",
+    "original_cnots": 934,
+    "original_two_qubit_depth": 162,
+    "original_total_depth": 383,
+    "cnots": 504,
+    "two_qubit_depth": 87,
+    "total_depth": 348,
+    "transpiled_fidelity": 0.9962303797886533,
+    "qubit_order_unchanged": true,
+    "minutes": 2.631609268983205
+  }
+}

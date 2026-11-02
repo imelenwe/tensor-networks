@@ -41,9 +41,14 @@ parser.add_argument("--coarse-steps", type=int, required=True)
 parser.add_argument("--target-bond", type=int, required=True)
 parser.add_argument("--training-bond", type=int, required=True)
 parser.add_argument("--states", nargs="+", choices=["vacuum", "meson"], required=True)
-parser.add_argument("--gradient", choices=["jax", "explicit"], required=True,
+parser.add_argument("--gradient", choices=["jax", "explicit", "layer"], required=True,
                     help="jax: trains on the exact circuit, ignores --training-bond, high memory; "
-                         "explicit: applies --training-bond during training, low memory")
+                         "explicit: applies --training-bond during training, low memory; "
+                         "layer: our layer gradient, applies --training-bond, low memory, all slopes from one backward layer pass")
+parser.add_argument("--stride", type=int, default=6,
+                    help="layer gradient only: keep the forward state before every this-many layers (more = less memory)")
+parser.add_argument("--gpu", action="store_true", help="layer gradient only: run on a GPU (needs cupy)")
+parser.add_argument("--single-precision", action="store_true", help="layer gradient only: complex64, half the memory")
 parser.add_argument("--resume", action="store_true", help="continue a stopped run from its saved progress")
 parser.add_argument("--max-hours", type=float, default=None, help="stop each state's training after this many hours (default: no limit)")
 parser.add_argument("--planner-minutes", type=float, default=None,
@@ -159,12 +164,18 @@ if args.resume and (run_folder / "results.json").exists():
     log(f"resuming: already finished: {[label for label in args.states if label in results] or 'none'}")
 training_settings = make_simulator_settings(max_bond=args.training_bond, gradient=args.gradient)
 check_settings = make_simulator_settings(max_bond=2 * args.training_bond, gradient=args.gradient)
+layer_gradient = None
+if args.gradient == "layer":
+    from layer_gradient import LayerGradientSettings   # hadron-aqc/layer_gradient/ (see scripts/README.md, Setup)
+    layer_gradient = LayerGradientSettings(max_bond=args.training_bond, stride=args.stride, use_gpu=args.gpu,
+                                           single_precision=args.single_precision)
+    log(f"layer gradient: {layer_gradient}")
 planner = None
 if args.planner_minutes is not None and args.gradient == "jax":   # explicit does many tiny contractions; a planner would only slow them
     planner = make_contraction_planner(args.planner_minutes, cache_folder=str(run_folder / "contraction_plans"))
     log(f"contraction order: cotengra planner (up to {args.planner_minutes:g} min of planning, plans saved in contraction_plans/)")
 elif args.planner_minutes is not None:
-    log("note: --planner-minutes is ignored with gradient=explicit")
+    log(f"note: --planner-minutes is ignored with gradient={args.gradient}")
 
 for label in args.states:
     if label in results:
@@ -218,7 +229,8 @@ for label in args.states:
             hit_time_limit = True
             raise StopIteration   # scipy's way to end training early; it returns the latest angles
 
-    result = train_to_target(ansatz, starting_angles, target_mps, training_settings, progress=show_progress, planner=planner)
+    result = train_to_target(ansatz, starting_angles, target_mps, training_settings, progress=show_progress, planner=planner,
+                             layer_gradient=layer_gradient)
     trained_angles[label] = result.x
     np.savez(run_folder / "angles.npz", **trained_angles)
     trained_mps = tensornetwork_from_circuit(ansatz.assign_parameters(result.x), training_settings)
