@@ -96,6 +96,23 @@
 <section class="panel">
   <h2>Background (open if needed)</h2>
   <details class="more">
+    <summary>The three strengths: which angle each one is</summary>
+    <p>Each number is a <strong>fixed rotation angle in radians</strong>, applied once per Trotter step: a physics strength times the time step dt = 0.0015. These numbers set the circuit; they are not the trained angles.</p>
+    <div class="scroll">
+    <table class="t">
+      <tr><th>strength<br>(x = 200)</th><th>where it goes · meaning · formula</th></tr>
+      <tr><td>kinetic<br><code>0.3</code></td><td><strong>Pair gate:</strong> its two Rz's (−0.3, then +0.3)<br>How easily a quark hops<br>x × dt = 200 × 0.0015</td></tr>
+      <tr><td>electric<br><code>−0.226125</code></td><td><strong>Electric gate:</strong> θ in Rz(θ/2), Rz(−θ/2), Rz(θ/2)<br>Energy cost of the flux string<br>Fixed, same for every x</td></tr>
+      <tr><td>mass<br><code>0.0424264</code></td><td><strong>One Rz on every qubit</strong> at the end of each step<br>Quark mass<br>2 × (m/g) × √x × dt, with m/g = 1</td></tr>
+    </table>
+    </div>
+    <ul>
+      <li><strong>Mass signs per site:</strong> −m on sites 0, 2, 4, …, +m on sites 1, 3, 5, … (even sites hold quarks, odd sites antiquarks). Both qubits of a site get the same sign, so along the qubits: − − + + − − …</li>
+      <li><strong>x = 100 → 200:</strong> kinetic 0.15 → 0.3 (doubles), mass 0.03 → 0.0424 (× √2), electric unchanged. The bigger pair-gate angle is why x = 200 needs the 6-step start.</li>
+      <li><strong>Link to training:</strong> the trainable circuit starts each pair and electric block at the angles that reproduce these gates exactly (KAK angle 10.313° for pair, 3.887° for electric); training moves them from there.</li>
+    </ul>
+  </details>
+  <details class="more">
     <summary>How jax gets the slopes</summary>
     <ul>
       <li>It writes down every multiplication of the <strong>exact</strong> (untrimmed) overlap calculation, keeps every result, then runs the chain rule backwards over that record: all slopes at once, exact.</li>
