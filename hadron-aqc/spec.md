@@ -92,32 +92,22 @@ x = 200 is expected. All x = 200 results before 2026-10-26 used mass 0.03.
       Confirms the 20-qubit diagnosis: at x = 200 the 5-step circuit is too small.
 - [x] x = 200 at 40 qubits with a 6-step start (not resuming the 5-step run) — 2026-10-31: the collaborator has moved
       to a 6-step start on the HPC, based on our analysis. Still open: target bond above 1024 for x = 200 vacuum.
-- [ ] Waiting: a collaborator runs our script on the group's HPC (120 qubits, x = 100 and 200); compare with their
-      x = 100 result (7010 → 3548 CNOTs, depth 147 → 75, fidelity 0.990).
+- [x] 6-step start with T11 for x = 200 is the setting now (16 qubits: 0.985 with 5 steps → 0.996 with 6) — 2026-11-02.
+- [x] Sent the group the 16-qubit, 6-step results (jax vs layer gradient) and asked to meet on next steps — 2026-11-02.
+      Older group items (x = 100 from T11, QASM, corrected x = 200 files, 32/40/120-qubit and 7-step runs) closed
+      2026-11-02: superseded by the 6-step T11 plan.
+- [ ] Layer gradient (`layer_gradient/`, `--gradient layer`): slopes from a forward pass + backward layer pass on
+      trimmed chains, memory set by the bond. Next: learn the simplified code (`layer_gradient/simplified/CODE_MAP.md`,
+      one file per sitting), then MIGRATION step 5 (user's call); runs 20 → 40 qubits (HPC, CPU), then 120 qubits at
+      bond 1024 (GPU: first the 12-qubit quick test with `--gpu`, untested so far). Measured 2026-11-02, x = 200, meson,
+      ZZ zeroed out: 12 qubits, bond 64: 0.995298 (jax 32-bit: 0.994759; equal at step 134, then 64-bit keeps improving),
+      301 CNOTs, 7.9 vs 0.2 min. 16 qubits, bond 256 (exact): 5-step start jax 0.984622 / layer 0.984771, 418 CNOTs;
+      **6-step start jax 0.996206 (82 steps) / layer 0.996233 at step 82, 0.996386 final**, CNOTs 934 → 504, depth
+      162 → 87, 2.6 vs 44 min.
 - [ ] Hybrid circuit (the professor's plan): first 10 steps (T11) compressed to a 6-step AQC circuit, then 7 ordinary
       Trotter steps, reaching 15–17 time steps. Needs: append steps 11, 12, … in the right qubit layout (step 1 skips a
       SWAP layer, later steps don't); check the hybrid against the exact full circuit at 12–20 qubits; count CNOTs and
       depth vs the full circuit. Spec first.
-- [ ] Layer gradient (`layer_gradient/`, `--gradient layer`): slopes from a forward pass + backward layer pass on
-      trimmed chains, memory set by the bond. Migration in `layer_gradient/MIGRATION.md`; then runs 12 → 20 → 40 qubits
-      against jax, then 120 qubits (x = 200) on the HPC. 2026-11-02, 12 qubits, x = 200, meson, ZZ zeroed out, bond 64:
-      0.995298 (jax 32-bit: 0.994759; equal at step 134, then 64-bit keeps improving to step ~500), 301 CNOTs, 7.9 min
-      vs 0.2 min (1077 steps; 0.4 s per step, mostly building the 4×4 blocks). 16 qubits, meson, bond 256 (exact):
-      5-step start jax 0.984622 (83 steps) / layer 0.984650 at step 83, 0.984771 final, 418 CNOTs; **6-step start jax
-      0.996206 (82 steps) / layer 0.996233 at step 82, 0.996386 by step 300**, CNOTs 934 → 504, depth 162 → 87,
-      2.6 vs 44 min.
-- [ ] Confirm with the group: x = 100 also compressed from T11 (not the published T20).
-- [ ] Send the group our QASM (T11, both x, 120 qubits) to cross-check.
-- [ ] Ask the group for corrected x = 200 files (mass 0.0424264) for the reference test.
-- [ ] Status page: both circuits, mass corrected, 12-qubit results.
-- [ ] 32 qubits, both x (x = 100 first); then 40; then 120 on the HPC.
-- [ ] x = 200: try a 7-step start on the HPC (does not fit the 24 GB laptop).
-- [ ] Remove the local copies of the four account skills (`~/.claude/skills/`), now synced to the account.
-
-**Clean-up, once the circuit is confirmed:**
-- [ ] TEBD notebook: rerun and test it on the confirmed circuit (planner on, new angle files instead of `*_k3.npz`, refresh its tables), as part of its rewrite.
-- [ ] `results/`: remove the runs on circuits we no longer use. In git: `12q_20steps_4cheap_…`, `40q_20steps_4cheap_…`, `trained_aqc_hadron_{12q,32q}_k3.npz` (old circuit); the `11steps` runs if x = 100 is chosen. Local only: `32q_20steps_4cheap_target{512,1024}_training256/` (empty), `32q_11steps_7cheap_…/` (killed run, target only).
-- [ ] Delete `results/targets_120qubits_merged/` (8.4 GB, local only): 120-qubit targets of the old circuit with the wrong +0.01 electric sign. New 120-qubit targets get built by the script (cluster) on the confirmed circuit.
 
 ## Plan
 
@@ -146,19 +136,13 @@ x = 200 is expected. All x = 200 results before 2026-10-26 used mass 0.03.
 - [x] 32 qubits, 4-step start — too slow for the laptop: target bond 512 loses 3% of the state (norm violation 0.0295, too low); bond 1024 loses 0.15% (20 min). Training at bond 256: ~15 min per step (step 1: 23 min, 0.13 → 0.47; step 2: 16.5 min → 0.55), 100–200 steps expected → 25–50 h per state. Stopped; cluster job.
 - [x] Cluster feedback (2026-10-07): jax gradient needs 50 GB (32-bit) / 91 GB (64-bit) at 32 qubits → out of memory. Switched `make_simulator_settings` to `autodiff_backend="explicit"` (IBM's own gradient): 32 qubits at training bond 256 → peak 0.64 GB, ~2.7 min per step (first steps up to 9 min), 1 core, 64-bit. 12 qubits: 0.29 GB vs 1.09 GB (jax), 1231 → 273 CNOTs, 0.99995 in 2 min. 64-bit training rarely stops by itself → `--max-hours`. Cluster's different numbers (norm violation 0.0000, before-training 0.231) = meson; our laptop run was vacuum.
 - [x] Gradient is a choice (2026-10-09): `make_simulator_settings(max_bond, gradient="jax")` (notebook default, reproduces 0.999967 / 0.999986, 201 / 202 CNOTs in seconds); script `--gradient jax|explicit` (required). **Library code: with jax the trainable circuit is an exact `qtn.Circuit`, so max_bond is ignored in training; explicit uses the bond-limited `CircuitMPS`.** Cluster, 32 qubits / 20 steps / meson / training bond 256, checked at bond 1024: jax 32-bit **0.991** (step 53, ~50 GB, ~10 min per step on 4 cores), jax 64-bit 0.983 (step 20, ~91 GB); explicit **0.949** (printed 0.82 at bond 256; ~2 GB), vacuum explicit 0.67. → at 20 steps training must see ~bond 1024; explicit at 256 trains a blurred circuit.
-- [ ] 32 qubits, 20 steps, jax 32-bit, meson + vacuum on the cluster (64 GB per job).
-- [ ] 120 qubits: measure jax memory at 16 / 20 / 24 qubits first; if it does not fit a 256 GB node, look for a cheaper sharp-training route (e.g. explicit at 256, then a few exact steps).
 - [x] Target build speed (2026-10-10): `TARGET_SVD_CUTOFF` 0 → 1e-10 (quimb default): 32 qubits, 20 steps, meson, bond 512: 5.3 → 2.5 min, same norm violation (0.00126), same state (overlap 0.9999 after dividing by the norms). The tracker's MPS submission used quimb at bond 800 (~50 min on a laptop).
-- [ ] Per-site particle counts (the benchmark's observable) of the 0.949 and 0.991 circuits vs the target: is 0.95 already good enough?
-- [ ] Mass term (collaborator remark 2026-10-07): the tutorial's alternating sign lands on the two qubits of one site after the SWAPs, making the mass term a symmetry (explains "mass barely matters"); proposed fix `if (q // 2) % 2 == 0:` in `construct_circuit`. Decide at catch-up: benchmark circuit as is vs corrected option.
 
 **120 qubits (60 sites, 20 Trotter steps):**
 - [x] 1. Build the targets — `results/targets_120qubits_merged/` (not in git), `max_bond` 256 / 512 / 1024, 6.5 h total (1024: 2.7 h each). At 1024: norm 0.985 / 0.988, change 512→1024 0.0054 / 0.0056 (≈ 0.0014 error est.), count = 60. **Built with the tutorial's +0.01 electric sign: not the official state; rebuild (cutoff 1e-10 now, ~2× faster) before training at 120 qubits.**
 
 **Next:**
 - [x] 10. Fidelity of the **transpiled** circuit at 12 qubits — done in step 6, holds — snap angles < 1e-6 to 0 before transpiling (Qiskit 2.5.x level-3 bug with near-zero angles, reported by the parallel implementation: fidelity fell to ~0.92 at 40/80 qubits).
-- [ ] 11. About 30 qubits (15 sites), 10 steps: target + training, 3- and 4-step starts (compression failed at ~30 qubits before). Train at bond 128, check at higher bond (bond 128 can mislead on hard states).
-- [ ] 12. 120-qubit training — needs a cluster; or share the 120-qubit targets + merging trick with the parallel implementation.
 
 **Parallel implementation (2026-10-04 report):** meson, 10 steps, up to 80 qubits at F > 0.999 (4–5-step starts; 80 qubits: 2180 CX / 2q depth 68 at F 0.999425; 21–31 h per run on a cluster). A tweak (one angle held at zero in ~60% of blocks) saves a further 12–14% CNOTs: **zeroing out ZZ** (ZZ angle c of each KAK block kept at 0 where it starts at 0: pair and electric blocks, 80 of 127 at 12 qubits). Done 2026-10-23: `build_cheap_trainable_circuit(..., zero_out_zz=True)`, script `--zero-out-zz`; 12 qubits CNOTs ~350 → 301, two-qubit depth 82 → 72, fidelity 0.9957 / 0.9960 → 0.9950 / 0.9945 (vacuum / meson). Not yet: 20 steps at δt = 0.0015, or 120 qubits. Their 12-qubit counts are at optimisation level 1, so not directly comparable with ours (level 3).
 

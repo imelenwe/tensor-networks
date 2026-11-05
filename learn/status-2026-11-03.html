@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status 03.11.2026</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#EEF1F0; --surface:#FFFFFF; --ink:#1B2229; --muted:#5B6570;
+    --border:#D3D9D7; --accent:#B5702A; --accent-soft:#F3E3CF;
+    --accent2:#2F7A72; --accent2-soft:#DCEEEB; --mono-bg:#F5F3EE;
+    --shadow:0 1px 2px rgba(20,24,29,.06), 0 8px 24px rgba(20,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+      --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+      --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181D; --surface:#1B2129; --ink:#ECE9E1; --muted:#93A0AB;
+    --border:#2B333D; --accent:#E0A264; --accent-soft:#4A3320;
+    --accent2:#7FC0B8; --accent2-soft:#1D3733; --mono-bg:#10151A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; padding:32px 16px 90px; line-height:1.6;}
+  a{color:var(--accent2);}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px;}
+  h1{font-size:clamp(26px,4vw,34px); margin:0 0 8px; font-weight:700; line-height:1.2;}
+  .sub{color:var(--muted); font-size:15.5px; max-width:68ch; margin:0;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;}
+  .panel h2{margin:0; font-size:20px;}
+  .panel p, .panel li{font-size:15px; max-width:72ch; margin:0;}
+  .panel ul{margin:0; padding-left:22px; display:flex; flex-direction:column; gap:6px;}
+  code{font-family:'IBM Plex Mono',monospace; font-size:.92em; background:var(--mono-bg); padding:1px 5px; border-radius:4px;}
+  .scroll{overflow-x:auto; max-width:100%;}
+  table.t{border-collapse:collapse; font-size:14.5px; font-variant-numeric:tabular-nums;}
+  table.t th, table.t td{border:1px solid var(--border); padding:7px 11px; text-align:left; vertical-align:top;}
+  table.t th{background:var(--mono-bg); font-weight:600;}
+  table.t td.n{font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
+  table.t tr.hi td{background:var(--accent2-soft);}
+  .key{border-left:3px solid var(--accent2); background:var(--accent2-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:74ch;}
+  .warn{border-left:3px solid var(--accent); background:var(--accent-soft); padding:10px 14px; border-radius:0 8px 8px 0; font-size:15px; max-width:74ch;}
+  details.more{border:1px solid var(--border); border-radius:10px; padding:10px 14px; background:var(--mono-bg);}
+  details.more summary{cursor:pointer; font-weight:600; font-size:15px;}
+  details.more[open] summary{margin-bottom:8px;}
+  details.more p, details.more li{font-size:14.5px;}
+  details.more img{max-width:100%; height:auto; border-radius:8px; background:#fff; margin-top:6px;}
+  /* status navigation */
+  .layout{max-width:1080px; margin:0 auto; display:grid; grid-template-columns:200px minmax(0,1fr); gap:28px; align-items:start;}
+  .page{display:flex; flex-direction:column; gap:24px; min-width:0;}
+  nav.series{position:sticky; top:24px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);}
+  nav.series .t{font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 10px;}
+  nav.series ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px;}
+  nav.series li a{display:block; padding:7px 10px; border-radius:8px; font-size:14.5px; text-decoration:none; color:var(--ink); font-family:'IBM Plex Mono',monospace;}
+  nav.series li a:hover{background:var(--mono-bg);}
+  nav.series li a[aria-current="page"]{background:var(--accent2-soft); color:var(--accent2); font-weight:600;}
+  nav.series .home{display:block; margin-top:12px; font-size:13.5px;}
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} nav.series{position:static;} }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="series" aria-label="Status updates">
+  <p class="t">Status updates</p>
+  <ol>
+    <li><a href="status-2026-11-03.html" aria-current="page">03.11.2026</a></li>
+    <li><a href="status-2026-10-22.html">22.10.2026</a></li>
+    <li><a href="hadron-aqc-status.html">16.10.2026</a></li>
+  </ol>
+  <a class="home" href="status.html">All statuses</a>
+  <a class="home" href="index.html">← Learn index</a>
+</nav>
+<div class="page">
+
+<header>
+  <p class="eyebrow">Hadron circuit compression · status · 03.11.2026 · for the meeting on Friday 06.11</p>
+  <h1>6-step start for x = 200; the MPS gradient now runs in our script</h1>
+  <p class="sub">Where we are, what the data shows, and what to decide on Friday.</p>
+</header>
+
+<section class="panel">
+  <h2>1. Where we are</h2>
+  <ul>
+    <li><strong>Circuit:</strong> x = 200 (per step: kinetic 0.3, electric −0.226125, mass 0.0424264, mass signs per site), target T11, hadron start on the two centre sites. Our code builds the group's files gate for gate.</li>
+    <li><strong>Setup:</strong> train from a <strong>6-step</strong> start (was 5), ZZ zeroed out (2 CNOTs per pair and electric block).</li>
+    <li><strong>Training:</strong> one script, three ways to get the slopes: <code>jax</code> (exact), <code>explicit</code> (IBM's), and <strong>new:</strong> <code>layer</code>, a collaborator's MPS gradient.</li>
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>Background (open if needed)</h2>
+  <details class="more">
+    <summary>How jax gets the slopes</summary>
+    <ul>
+      <li>It writes down every multiplication of the <strong>exact</strong> (untrimmed) overlap calculation, keeps every result, then runs the chain rule backwards over that record: all slopes at once, exact.</li>
+      <li>Cost: memory grows with the circuit (about 50 GB at 32 qubits without the planner; it asked for 1.5 TB at 120 qubits). 32-bit by default.</li>
+    </ul>
+    <p>Step by step: <a href="circuit-backprop-workbook.html#jax">Circuit Backprop Workbook, section 7</a>.</p>
+  </details>
+  <details class="more">
+    <summary>How explicit (IBM's gradient) gets the slopes</summary>
+    <ul>
+      <li>It trains on <strong>trimmed</strong> MPSs (bond = <code>--training-bond</code>). Two MPSs walk through the circuit gate by gate: the start state, and the target with the whole circuit undone.</li>
+      <li>For each angle it computes <strong>one full MPS overlap</strong> with that gate's rotation inserted: one overlap per angle (thousands per training step at 120 qubits).</li>
+      <li>Little memory, but the time grows with the number of angles; too small a bond trains a blurred circuit.</li>
+    </ul>
+  </details>
+  <details class="more">
+    <summary>How layer (the MPS gradient) gets the slopes</summary>
+    <ul>
+      <li><strong>Forward pass:</strong> run the circuit layer by layer as a trimmed MPS, keeping the state before every 6th layer.</li>
+      <li><strong>Backward layer pass:</strong> undo the layers on the target, last layer first. At each layer, one sweep from the left and one from the right give every block's 16-number table, and from it the slopes of that block's angles.</li>
+      <li>All slopes from about two to three MPS runs; memory set by the bond, not by the circuit; 64-bit.</li>
+    </ul>
+    <p>Step by step on 3 qubits: <a href="circuit-backprop-workbook.html#improve">Circuit Backprop Workbook, section 6</a>; trimming and overlaps: <a href="tensor-chain-workbook.html">Tensor Chain Workbook</a>.</p>
+  </details>
+  <details class="more">
+    <summary>Zeroing out ZZ: what the KAK block is</summary>
+    <ul>
+      <li>IBM's library rebuilds every two-qubit gate (pair, SWAP, electric) as one <strong>KAK block</strong> followed by a turn (ZXZ) on each of its two qubits.</li>
+      <li>KAK(a, b, c) = exp(i(a X⊗X + b Y⊗Y + c Z⊗Z)): the three ways two qubits can act on each other, one angle each. On hardware it takes <strong>3 CNOTs</strong> (picture below; the ZZ angle sits in the middle Rz).</li>
+      <li>Pair and electric gates start with <strong>c = 0</strong> (no ZZ part). Keeping c at 0 during training means <strong>2 CNOTs</strong> instead of 3. SWAPs need all three (a = b = c = 45°), so they keep theirs.</li>
+      <li>12 qubits: CNOTs 347 / 351 → 301 / 301, two-qubit depth 82 → 72, fidelity −0.001 (vacuum / meson). Script option <code>--zero-out-zz</code>.</li>
+    </ul>
+    <img src="kak-block-inside.png" alt="Inside the KAK block: three CNOTs with rotations using its three angles">
+    <p>Where the angles come from: <a href="circuit-backprop-workbook.html#angles">Circuit Backprop Workbook, section 1</a>.</p>
+  </details>
+</section>
+
+<section class="panel">
+  <h2>2. Why 6 steps: the 5-step start is too small at x = 200</h2>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>x = 200, meson,<br>trained with jax</th><th>start</th><th>CNOTs</th><th>two-qubit depth</th><th>fidelity</th></tr>
+    <tr><td>16 qubits</td><td>full circuit</td><td class="n">934</td><td class="n">162</td><td class="n">1</td></tr>
+    <tr><td></td><td>5 steps</td><td class="n">418</td><td class="n">72</td><td class="n">0.9846</td></tr>
+    <tr class="hi"><td></td><td>6 steps</td><td class="n">504</td><td class="n">87</td><td class="n">0.9962</td></tr>
+    <tr><td>20 qubits</td><td>full circuit</td><td class="n">1195</td><td class="n">162</td><td class="n">1</td></tr>
+    <tr><td></td><td>5 steps</td><td class="n">535</td><td class="n">72</td><td class="n">0.9833</td></tr>
+    <tr class="hi"><td></td><td>6 steps</td><td class="n">645</td><td class="n">87</td><td class="n">0.9947</td></tr>
+    <tr><td></td><td>7 steps</td><td class="n">755</td><td class="n">102</td><td class="n">0.9979</td></tr>
+    <tr><td></td><td>8 steps</td><td class="n">865</td><td class="n">117</td><td class="n">0.9991</td></tr>
+  </table>
+  </div>
+  <p class="sub" style="font-size:14px">All rows trained with jax (16 qubits: 02.11; 20 qubits: 26.10). The MPS gradient has run at 12 and 16 qubits only (section 3).</p>
+  <ul>
+    <li>Each extra step costs about 110 CNOTs (20 qubits) and buys a large jump in fidelity: 5 → 6 steps cuts the error (1 − fidelity) by 3–4×.</li>
+    <li>40 qubits on the HPC with the 5-step start (CNOTs 2500 → 1120): <strong>x = 100</strong> 0.996 (meson) / 0.994 (vacuum); <strong>x = 200</strong> 0.909 / 0.844, flat. Same cause. The 6-step start at 40 qubits is running on the HPC.</li>
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>3. The MPS gradient (<code>--gradient layer</code>)</h2>
+  <p>It gets all slopes from one forward pass and one backward pass on trimmed MPSs, so its memory is set by the bond, not by the circuit (jax needed 1.5 TB at 120 qubits). Added to our script unchanged, with tests:</p>
+  <ul>
+    <li>6 qubits: matches the exact answer (statevector) to 1e-14.</li>
+    <li>12 qubits: loss and all 1,087 slopes match jax (64-bit) to 2e-9.</li>
+  </ul>
+  <div class="scroll">
+  <table class="t">
+    <tr><th>x = 200, meson,<br>exact bond</th><th>jax</th><th>MPS gradient</th></tr>
+    <tr><td>12 qubits, 5-step start</td><td class="n">0.9948<br>(134 steps)</td><td class="n">0.9953</td></tr>
+    <tr class="hi"><td>16 qubits, 6-step start</td><td class="n">0.99621<br>(82 steps)</td><td class="n">0.99623 at step 82<br>0.99639 final</td></tr>
+    <tr><td>CNOTs (16 qubits)</td><td class="n">934 → 504</td><td class="n">934 → 504</td></tr>
+    <tr><td>time (16 qubits, laptop CPU)</td><td class="n">2.6 min</td><td class="n">44 min</td></tr>
+  </table>
+  </div>
+  <ul>
+    <li>At the same training step the two agree. The MPS gradient then keeps improving a little because it works in 64-bit (jax runs in 32-bit and stops).</li>
+    <li>Slower at these small sizes; its advantage is memory at large sizes. Cost per step grows with the bond (about bond³): CPU up to bond ~512, a GPU for bond 1024.</li>
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>4. Next steps (to decide on Friday)</h2>
+  <ul>
+    <li>⬜ <strong>MPS gradient at scale:</strong> waiting for a collaborator's runs on the HPC: 20 → 40 → 120 qubits (120 at bond 1024 on a GPU), compared with jax.</li>
+    <li>⬜ <strong>x = 200 at 120 qubits, 6-step start:</strong> the vacuum target needs a bond above 1024 (norm violation 0.025 at 40 qubits).</li>
+    <li>⬜ <strong>Hybrid circuit</strong> (the professor's plan): T11 compressed to 6 steps, then 7 ordinary Trotter steps, reaching 15–17 time steps. Check it against the exact circuit at 12–20 qubits; count CNOTs and depth.</li>
+    <li>⬜ <strong>Question for the group:</strong> what fidelity is good enough for the observable (particle counts per site)? That sets how many steps the start needs.</li>
+  </ul>
+  <div class="key">Run it: <code>hadron-aqc/scripts/README.md</code>, section "3. Layer gradient". Existing checkouts: <code>git pull &amp;&amp; git sparse-checkout add hadron-aqc/layer_gradient</code>.</div>
+</section>
+
+</div>
+</div>
+</body>
+</html>
