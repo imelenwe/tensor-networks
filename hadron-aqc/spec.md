@@ -96,6 +96,8 @@ x = 200 is expected. All x = 200 results before 2026-10-26 used mass 0.03.
 - [x] Sent the group the 16-qubit, 6-step results (jax vs layer gradient) and asked to meet on next steps — 2026-11-02.
       Older group items (x = 100 from T11, QASM, corrected x = 200 files, 32/40/120-qubit and 7-step runs) closed
       2026-11-02: superseded by the 6-step T11 plan.
+- [x] Meeting with the group on next steps (status page `learn/status-2026-11-03.html`) — 2026-11-06.
+- [ ] Follow-up meeting with the group — Fri 2026-11-13. Add the 06.11 outcomes here.
 - [ ] Layer gradient (`layer_gradient/`, `--gradient layer`): slopes from a forward pass + backward layer pass on
       trimmed chains, memory set by the bond. Next: learn the simplified code (`layer_gradient/simplified/CODE_MAP.md`,
       one file per sitting), then MIGRATION step 5 (user's call); runs 20 → 40 qubits (HPC, CPU), then 120 qubits at

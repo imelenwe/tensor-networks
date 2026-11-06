@@ -113,6 +113,34 @@
     </ul>
   </details>
   <details class="more">
+    <summary>The 6-step start: what it is, and why not 10 steps</summary>
+    <p><strong>Same total time, fewer and bigger steps.</strong> The target T11 runs t = 11 × 0.0015 = 0.0165. The starting circuit covers the same t in 6 steps of 0.00275 each:</p>
+    <div class="scroll">
+    <table class="t">
+      <tr><th>circuit</th><th>steps · angles per step</th></tr>
+      <tr><td>target<br>T11</td><td><strong>11 steps × 0.0015</strong><br>kinetic 0.3<br>electric −0.226125<br>mass 0.0424264</td></tr>
+      <tr class="hi"><td>6-step<br>start</td><td><strong>6 steps × 0.00275</strong><br>each angle × 11/6:<br>kinetic 0.55<br>electric −0.4146<br>mass 0.0778</td></tr>
+    </table>
+    </div>
+    <ul>
+      <li><strong>The steps multiply:</strong> U<sub>step</sub> × U<sub>step</sub> × … (6 times) ≈ e<sup>−iHt</sup>. Only roughly equal: each step applies the parts of H (pair, electric, mass) one after another, which is exact only for tiny steps. Bigger steps, bigger error; training removes most of it and keeps the 6-step gate count.</li>
+      <li><strong>Nothing is simulated to make it:</strong> it is a gate list. The library (<code>generate_ansatz_from_circuit</code>) turns each two-qubit gate into a KAK + ZXZ block, with starting angles that copy the 6-step circuit exactly. Our X gates (vacuum or meson start) fold into the first turns on each qubit; every qubit starts at |0⟩.</li>
+      <li><strong>At 120 qubits</strong> the 6-step circuit is just as easy to make. The classical cost is elsewhere: (1) the T11 target, simulated once as an MPS at bond 1024 (up to about 4 GB per state). The 120-qubit targets we have are from the old 20-step circuit, so the x = 200 T11 targets are still to be built. (2) Training: hundreds of steps, each simulating the trainable circuit and getting the slopes. This is the open question (jax: 1.5 TB; the MPS gradient: a GPU at bond 1024).</li>
+    </ul>
+    <p><strong>Why not 10 steps?</strong> The aim is a shorter circuit for the hardware, and the trained circuit keeps the start's gate count. 20 qubits, x = 200, meson, ZZ zeroed out (same runs as section 2):</p>
+    <div class="scroll">
+    <table class="t">
+      <tr><th>start</th><th>CNOTs</th><th>fidelity</th></tr>
+      <tr><td>5 steps</td><td class="n">535</td><td class="n">0.9833</td></tr>
+      <tr class="hi"><td>6 steps</td><td class="n">645</td><td class="n">0.9947</td></tr>
+      <tr><td>8 steps</td><td class="n">865</td><td class="n">0.9991</td></tr>
+      <tr><td>10 steps</td><td class="n">≈ 1085</td><td>not run<br>(+110 CNOTs per step)</td></tr>
+      <tr><td>full T11</td><td class="n">1195</td><td class="n">1</td></tr>
+    </table>
+    </div>
+    <p>10 steps would save only about 9% of the CNOTs; 6 steps save 46%. On hardware every CNOT adds noise, so the rule is: <strong>the fewest steps that still train to the target</strong>. At x = 200 that is 6 (5 falls short).</p>
+  </details>
+  <details class="more">
     <summary>How jax gets the slopes</summary>
     <ul>
       <li>It writes down every multiplication of the <strong>exact</strong> (untrimmed) overlap calculation, keeps every result, then runs the chain rule backwards over that record: all slopes at once, exact.</li>
