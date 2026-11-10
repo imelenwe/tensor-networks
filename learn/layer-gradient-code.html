@@ -71,6 +71,7 @@
   <ol>
     <li><a href="index.html">← Learn index</a></li>
     <li><a href="#start">0 · Before you start</a></li>
+    <li class="sub"><a href="#box-block">box and block</a></li>
     <li class="sub"><a href="#words">the words</a></li>
     <li class="sub"><a href="#names">short names in the code</a></li>
     <li><a href="#call">1 · One call, top to bottom</a></li>
@@ -131,6 +132,34 @@
   </table></div>
   <p class="hint">All numbers on this page come from running the code on this example (max_bond 64, stride 6, complex128). The page writes θ names, like the workbook; the code uses the angle numbers.</p>
   <p class="hint"><b>One difference from the workbook.</b> The loop variables in the code count layers 0, 1, 2. The workbook, and the docstring at the top of <code>forward_backward_pass.py</code>, count them 1, 2, 3. So the docstring's "layer k, S_(k−1), B_k" is this page's "layer n = k − 1, S<sub>n</sub>, B<sub>n+1</sub>".</p>
+
+  <h3 id="box-block">Box and block: the two words to know first</h3>
+  <p>This is IBM's trainable copy of the 3-qubit example. Every drawn box with θ's in it is one <b>box</b>.</p>
+  <img src="three-gates-trainable.png" alt="ZXZ box on each qubit at the start; then for each of the three gates a KAK box followed by a ZXZ box on each of its two qubits" style="max-width:100%;height:auto;border-radius:8px;background:#fff">
+  <p><b>A box</b> is one instruction of the trainable circuit. The angles live in the boxes. There are two kinds:</p>
+  <div class="scroll"><table>
+    <tr><th>box</th><th>acts on</th><th>what it does</th><th>angles</th></tr>
+    <tr><td class="m">ZXZ</td><td>one qubit</td><td>turns the qubit: Rz, then Rx, then Rz</td><td>3 (2 for the first box on a qubit)</td></tr>
+    <tr><td class="m">KAK</td><td>two neighbour qubits</td><td>makes the two qubits act on each other: exp(i(a XX + b YY + c ZZ))</td><td>3 (2 when ZZ is locked at 0: pair and electric)</td></tr>
+  </table></div>
+  <p>The picture has <b>12 boxes</b>: 9 ZXZ boxes and 3 KAK boxes.</p>
+  <p><b>A block</b> is a group of boxes that the code multiplies into <b>one 4 × 4 matrix</b>. The grouping rule:</p>
+  <ul>
+    <li>Each KAK box starts one block.</li>
+    <li>The ZXZ boxes that come after a KAK box, on its two qubits, join that block.</li>
+    <li>The ZXZ boxes at the very start of a qubit join the first block on that qubit.</li>
+  </ul>
+  <div class="scroll"><table>
+    <tr><th>block</th><th>on qubits</th><th>its boxes</th><th>angles</th></tr>
+    <tr><td>0 (pair)</td><td class="m">q0, q1</td><td>start ZXZ of q0, start ZXZ of q1, KAK, ZXZ on q0, ZXZ on q1</td><td class="m">2 + 2 + 2 + 3 + 3 = 12</td></tr>
+    <tr><td>1 (SWAP)</td><td class="m">q1, q2</td><td>start ZXZ of q2, KAK, ZXZ on q1, ZXZ on q2</td><td class="m">2 + 3 + 3 + 3 = 11</td></tr>
+    <tr><td>2 (electric)</td><td class="m">q0, q1</td><td>KAK, ZXZ on q0, ZXZ on q1</td><td class="m">2 + 3 + 3 = 8</td></tr>
+  </table></div>
+  <p>So <b>12 boxes become 3 blocks</b>, with 12 + 11 + 8 = 31 angles. There is one block for each physics gate (pair, SWAP, electric).</p>
+  <div class="key">
+    <p><b>Why two words.</b> The box is what IBM's circuit has: it is where the angles are. The block is what the forward and backward passes use: they only see 4 × 4 matrices on two neighbour qubits. <code>read_boxes</code> finds the boxes, <code>merge_into_blocks</code> groups them, and <code>block_matrices</code> multiplies each group into its 4 × 4 matrix (<a href="#setup">sections 2</a> and <a href="#matrices">3</a>).</p>
+    <p>The 16 numbers of a block matrix are not angles. The code computes them from all the block's angles.</p>
+  </div>
 
   <h3 id="words">The words on this page</h3>
   <p>Each word has one meaning on this page. Under each meaning is its name in papers and in the code.</p>
