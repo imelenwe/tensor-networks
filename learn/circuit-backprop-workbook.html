@@ -87,8 +87,9 @@
     <li class="sub"><a href="#improve-rows23">6.6 Backward: layers 2, 1</a></li>
     <li class="sub"><a href="#improve-update">6.7 Update the angles</a></li>
     <li class="sub"><a href="#improve-fast">6.8 The real code, faster</a></li>
-    <li class="sub"><a href="#improve-symbols">6.9 Recipe in symbols</a></li>
-    <li class="sub"><a href="#improve-hand">6.10 By hand</a></li>
+    <li class="sub"><a href="#improve-table">6.9 The 16-number table</a></li>
+    <li class="sub"><a href="#improve-symbols">6.10 Recipe in symbols</a></li>
+    <li class="sub"><a href="#improve-hand">6.11 By hand</a></li>
     <li><a href="#jax">7 · How jax gets the same slopes</a></li>
     <li class="sub"><a href="#jax-steps">7.1 Step by step</a></li>
     <li class="sub"><a href="#jax-memory">7.2 Why it keeps every value</a></li>
@@ -539,13 +540,86 @@ slope = (0.155010 − 0.165246) / 0.02
   <p>The example above shows <b>what</b> is computed. At 120 qubits the code computes the same slopes, with three savings:</p>
   <div class="scroll"><table>
     <tr><th></th><th>the 3-qubit example</th><th>the code at 120 qubits</th></tr>
-    <tr><td>slope of one angle</td><td>nudge it, apply the whole layer to S2, compare</td><td>combine the state before and the target side after <b>once</b> per block into a table of 16 numbers, with a hole where the block sits; o = sum of (table × block's 4 × 4 entries). A nudge (h = 10⁻⁶) changes only the 4 × 4 block: 16 multiplications</td></tr>
+    <tr><td>slope of one angle</td><td>nudge it, apply the whole layer to S2, compare</td><td>combine the state before and the target side after <b>once</b> per block into a table of 16 numbers, with a hole where the block sits; o = sum of (table × block's 4 × 4 entries). A nudge (h = 10⁻⁶) changes only the 4 × 4 block: 16 multiplications. Step by step: <a href="#improve-table">6.9</a></td></tr>
     <tr><td>which forward states it keeps</td><td>S0, S1, S2</td><td>one every 6 layers; the others are rebuilt from the nearest kept one when the backward pass needs them</td></tr>
     <tr><td>how states are stored</td><td>8 numbers each</td><td>trimmed chains (links ≤ max_bond, Tensor Chain Workbook): about 8 GB in all</td></tr>
   </table></div>
   <p class="hint"><b>The price:</b> trimming throws a little away, so the slopes are close but not exact.</p>
 
-  <h3 id="improve-symbols">6.9 The recipe in symbols</h3>
+
+  <h3 id="improve-table">6.9 The 16-number table, step by step</h3>
+  <p><b>First, where S1 and B2 come from.</b> The forward pass makes the S's, starting from |000⟩. The backward pass makes the B's, starting from T. Each B is the B after it with one layer undone.</p>
+<pre>forward:   S0 ──layer 1──► S1 ──layer 2──► S2 ──layer 3──► S3
+           (|000⟩)
+
+backward:  B1 ◄──undo layer 2── B2 ◄──undo layer 3── B3 = T
+
+score:     o = ⟨T|S3⟩ = ⟨B2|S2⟩ = ⟨B1|S1⟩</pre>
+  <p>For the blocks of one layer, the table uses the S just <b>before</b> that layer and the B just <b>after</b> it:</p>
+  <div class="scroll"><table>
+    <tr><th>layer</th><th>state before</th><th>target side after</th><th>how the target side was made</th></tr>
+    <tr><td class="m">3</td><td class="m">S2</td><td class="m">B3 = T</td><td>nothing undone yet</td></tr>
+    <tr><td class="m">2</td><td class="m">S1</td><td class="m">B2</td><td>T with layer 3 undone</td></tr>
+    <tr><td class="m">1</td><td class="m">S0</td><td class="m">B1</td><td>T with layers 3 and 2 undone</td></tr>
+  </table></div>
+  <p class="hint">Neither of the two depends on the layer itself: S1 holds only the layers before layer 2, and B2 holds only T and the layers after it. The example below is layer 2, so it uses S1 and B2.</p>
+  <p><b>The table</b> of a block is the list of "numbers in front" of the block's entries when you write o out in full. The table uses only the state before the block and the target side after it. It does not use the block.</p>
+  <p class="hint">The example uses one qubit: a 2 × 2 gate, so 4 numbers. A two-qubit block works the same way with 4 × 4 = 16 numbers. Layer 2 is the layer, S1 the state before it, B2 the target side after it.</p>
+
+  <p><b>Step 1. The setup.</b></p>
+<pre>S1 = (1, 0)                   the state before layer 2
+G  = [[ 0.8, −0.6 ],          layer 2's gate
+      [ 0.6,  0.8 ]]
+B2 = (0.6, 0.8)               T with layer 3 undone
+
+S2 = G × S1 = (0.8, 0.6)
+o  = ⟨B2|S2⟩ = 0.6 × 0.8 + 0.8 × 0.6 = 0.96</pre>
+
+  <p><b>Step 2. Write o out in full.</b> Each entry of S2 is a sum over S1, so o becomes four terms. Each term is one number of G times a number in front of it:</p>
+<pre>o = B2[0]·S1[0] · G[0,0]  +  B2[0]·S1[1] · G[0,1]
+  + B2[1]·S1[0] · G[1,0]  +  B2[1]·S1[1] · G[1,1]</pre>
+  <p>The numbers in front contain only B2 and S1. Put in the values:</p>
+<pre>in front of G[0,0]:  0.6 × 1 = 0.6
+in front of G[0,1]:  0.6 × 0 = 0
+in front of G[1,0]:  0.8 × 1 = 0.8
+in front of G[1,1]:  0.8 × 0 = 0
+
+table = [[ 0.6, 0 ],
+         [ 0.8, 0 ]]
+
+check:  Σ table × G, entry by entry
+      = 0.6 × 0.8 + 0 × (−0.6) + 0.8 × 0.6 + 0 × 0.8
+      = 0.96 = o  ✓</pre>
+
+  <p><b>Step 3. Move one number of G.</b> G[1,0] goes from 0.6 to 0.61. The number in front of it stays 0.8.</p>
+<pre>table way:  change of o = 0.8 × 0.01 = 0.008
+
+slow way:   S2′ = (0.8, 0.61)
+            o′  = 0.6 × 0.8 + 0.8 × 0.61 = 0.968
+            change of o = 0.968 − 0.96 = 0.008  ✓</pre>
+
+  <div class="key">
+    <p><b>The number in front is not G's value.</b> In Step 3, G[1,0] is 0.6 and the number in front of it is 0.8. When G[1,0] moves by 0.01, the term moves from 0.8 × 0.6 to 0.8 × 0.61. The change is 0.8 × 0.01.</p>
+    <p>The rule: a × (g + move) = a × g + a × move. So the change of o is (number in front) × (move). G's own value does not matter.</p>
+  </div>
+
+  <p><b>Step 4. Move an angle.</b> An angle moves several numbers of G at once. Here G is a rotation by an angle θ, with cos θ = 0.8 and sin θ = 0.6. The <b>change matrix</b> lists how much each number of G moves per unit of θ:</p>
+<pre>G             = [[ cos θ, −sin θ ],   = [[ 0.8, −0.6 ],
+                 [ sin θ,  cos θ ]]      [ 0.6,  0.8 ]]
+
+change matrix = [[ −sin θ, −cos θ ],  = [[ −0.6, −0.8 ],
+                 [  cos θ, −sin θ ]]     [  0.8, −0.6 ]]
+
+change of o per unit θ = Σ table × change matrix, entry by entry
+                       = 0.6 × (−0.6) + 0 × (−0.8) + 0.8 × 0.8 + 0 × (−0.6)
+                       = −0.36 + 0.64
+                       = 0.28</pre>
+  <p class="hint">Check by hand: S2 = (cos θ, sin θ), so o = 0.6 cos θ + 0.8 sin θ, and its change per unit θ is −0.6 sin θ + 0.8 cos θ = −0.36 + 0.64 = 0.28 ✓.</p>
+
+  <p><b>In the real code.</b> With more qubits, S1 and B2 also hold the other qubits and the links between them. The code joins everything except the block, so the block's place stays empty (the "hole"). The result is still the list of numbers in front: 16 for a two-qubit block. One table serves all 8 to 12 angles of its block, at 16 multiplications per angle (<a href="layer-gradient-code.html#_table">Layer Gradient Code, <code>_table</code></a>).</p>
+  <p class="hint"><b>Limit:</b> the table is correct only for the current S1 and B2. When training moves the angles, S1 and B2 change, so the code builds every table again.</p>
+
+  <h3 id="improve-symbols">6.10 The recipe in symbols</h3>
 <pre>K layers, start S_0 = |0…0⟩, target T.
 
 1. forward:   S_k = layer k applied to S_(k−1),
@@ -568,7 +642,7 @@ slope = (0.155010 − 0.165246) / 0.02
    new θ = old θ − step × slope</pre>
   <p class="hint">⟨B_k|S_k⟩ = o for every k, because the same layers are undone on both sides.</p>
 
-  <h3 id="improve-hand">6.10 By hand: the smallest case</h3>
+  <h3 id="improve-hand">6.11 By hand: the smallest case</h3>
   <div class="key">
   <p><b>Assumptions:</b> one qubit; two layers, R<sub>Y</sub>(θ₁) then R<sub>Y</sub>(θ₂); start |0⟩; target T = |1⟩; all amounts real. R<sub>Y</sub>(θ)|0⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩ (section 3).</p>
   <p><b>Part A: the derivation (symbols only)</b></p>

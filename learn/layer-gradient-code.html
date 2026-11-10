@@ -671,7 +671,7 @@ return tensordot(bra[site + 1].conj(), t)             # (B, K)</pre>
       <tr><td>does</td><td>Joins everything around one block, with the block left out. The result has the block's shape: 4 × 4, [(out1 out2), (in1 in2)].</td></tr>
       <tr><td>in</td><td>the partial results left and right of the block, bra, ket</td></tr>
       <tr><td>out</td><td>the 4 × 4 table</td></tr>
-      <tr><td>why</td><td>For layer n, o = ⟨B<sub>n+1</sub>| layer n |S<sub>n</sub>⟩. S<sub>n</sub> holds only the layers before n. B<sub>n+1</sub> holds only T and the layers after n. So the block appears exactly once, and o is linear in its 16 entries: o = Σ table × block, entry by entry (not a matrix product). Each table entry tells how much o changes per unit change of that block entry. This is the workbook's "table with a hole where the block sits" (<a href="circuit-backprop-workbook.html#improve-fast">6.8</a>).</td></tr>
+      <tr><td>why</td><td>For layer n, o = ⟨B<sub>n+1</sub>| layer n |S<sub>n</sub>⟩. S<sub>n</sub> holds only the layers before n. B<sub>n+1</sub> holds only T and the layers after n. So the block appears exactly once, and o is linear in its 16 entries: o = Σ table × block, entry by entry (not a matrix product). Each table entry tells how much o changes per unit change of that block entry. Step by step, with numbers: <a href="circuit-backprop-workbook.html#improve-table">workbook 6.9</a>.</td></tr>
     </table>
     <p><b>Example: the pair block's table (layer 0).</b> The ket is S0 = |000⟩, so only the "in = 00" column is non-zero:</p>
 <pre>[[ 0.5204−0.1503i  0  0  0 ]
