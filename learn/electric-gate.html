@@ -64,7 +64,7 @@
   nav.series li span{color:var(--muted);}
   nav.series small{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); align-self:center;}
   nav.series .home{display:block; margin-top:12px; font-size:13.5px;}
-  @media (max-width:820px){ .layout{grid-template-columns:1fr;} nav.series{position:static;} }
+  @media (max-width:820px){ .layout{grid-template-columns:minmax(0,1fr);} nav.series{position:static; min-width:0;} }
 </style>
 </head>
 <body>
@@ -92,7 +92,7 @@
   <h2>1. The gate</h2>
   <div class="fig"><img src="electric-brick.png" alt="Electric gate (brick 18) on q0 and q1"></div>
   <p class="cap">Brick 18 from <code>brickwork_annotated_old.png</code> (old mass signs; this part is the same in the corrected circuit).</p>
-  <p>In order: <span class="m">X(q0), Rz(θ)(q0), CX(q0 → q1), Rz(−θ)(q1), CX(q0 → q1), X(q0), Rz(θ)(q1)</span>. 2 CNOTs. Here θ = 0.005 (earlier circuit); <strong>0.113</strong> in the newer files.</p>
+  <p>In order: <span class="m">X(q0), Rz(θ)(q0), CX(q0 → q1), Rz(−θ)(q1), CX(q0 → q1), X(q0), Rz(θ)(q1)</span>. 2 CNOTs. In our circuit θ = <strong>−0.113</strong>: half the electric strength −0.226125, the same at x = 100 and x = 200. This picture is from the earlier circuit (θ = 0.005).</p>
 </section>
 
 <section class="panel">
@@ -133,7 +133,7 @@
   <p>No factoring needed: in every term, look at the <strong>(q0, q1) bits</strong> and multiply by the matching phase; q2, q3 ride along. On the state after the <a href="swap.html">SWAP</a>:</p>
 <pre>cos²θ' e^(−iθ/2) |0011⟩  − i sinθ' cosθ' e^(+3iθ/2) |0110⟩
 − i sinθ' cosθ' e^(−iθ/2) |1001⟩  − sin²θ' e^(−iθ/2) |1100⟩</pre>
-  <p class="cap">θ' = −0.15 is the pair-gate angle; θ is the electric angle. Only the |0110⟩ term (q0 q1 = 01) picks up the different phase.</p>
+  <p class="cap">θ' = −0.15 is the pair-gate angle (x = 100; −0.3 at x = 200); θ is the electric angle. Only the |0110⟩ term (q0 q1 = 01) picks up the different phase.</p>
 </section>
 
 <section class="panel">

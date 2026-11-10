@@ -28,7 +28,7 @@
   nav a:hover{background:var(--node)}
   nav li.sub a{padding-left:22px; font-size:13px; color:var(--muted)}
   nav li.sub a:hover{color:var(--ink)}
-  @media (max-width:600px){ .layout{grid-template-columns:1fr} nav{top:0; z-index:2; padding:8px} nav p{display:none}
+  @media (max-width:600px){ .layout{grid-template-columns:minmax(0,1fr)} nav{min-width:0; top:0; z-index:2; padding:8px} nav p{display:none}
     nav ol{flex-direction:row; overflow-x:auto} nav a{white-space:nowrap} }
   main{display:flex; flex-direction:column; gap:18px; min-width:0}
   h1,h2,h3{font-family:var(--display); text-wrap:balance; margin:0; line-height:1.2}
@@ -381,7 +381,7 @@ A=1    [  0     0.141  ]</pre>
     <tr><th>in a summary.md</th><th>what it means</th></tr>
     <tr><td class="m">40 qubits</td><td>A chain of 40 qubit tensors. Each qubit by itself has only 2 values (0 or 1). Take qubit 20 in the middle: its left link stands for qubits 1–19, up to 2¹⁹ ≈ 524,000 parts; its right link stands for qubits 21–40, up to 2²⁰ ≈ 1 million parts (counting card, section 6).</td></tr>
     <tr><td class="m">target max_bond=1024</td><td>The <b>target</b> is the state of the full, deep <b>Trotter circuit</b> (11 Trotter steps): the state we want the short circuit to copy. It is built once on the laptop, and every link is trimmed to its 1024 biggest parts.</td></tr>
-    <tr><td class="m">training max_bond=512</td><td><b>Training</b> tunes the angles of the short compressed circuit (5 steps) until its state matches the target. Its state is simulated again at every one of hundreds of training steps, so each simulation must be cheap; and a short circuit makes less entanglement, so its links need fewer parts. Hence the smaller cap of 512 (halving the link size makes each simulation roughly 8 times cheaper).</td></tr>
+    <tr><td class="m">training max_bond=512</td><td><b>Training</b> tunes the angles of the short compressed circuit (6 steps at x = 200) until its state matches the target. Its state is simulated again at every one of hundreds of training steps, so each simulation must be cheap; and a short circuit makes less entanglement, so its links need fewer parts. Hence the smaller cap of 512 (halving the link size makes each simulation roughly 8 times cheaper).</td></tr>
     <tr><td class="m">recheck at max_bond=1024</td><td>After training, the circuit's state is simulated again with the bigger cap. If the fidelity barely moves (x = 100: 0.996189 at both 512 and 1024), 512 was enough.</td></tr>
     <tr><td class="m">norm violation 0.025</td><td>How much trimming threw away while building the target: 0.025 ≈ 2.5 %. We accept under 1 %.</td></tr>
     <tr><td class="m">fidelity 0.996</td><td>How alike the short circuit's state and the Trotter circuit's state are: 99.6 % (section 7).</td></tr>

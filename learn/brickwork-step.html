@@ -64,7 +64,7 @@
   nav.series li span{color:var(--muted);}
   nav.series small{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); align-self:center;}
   nav.series .home{display:block; margin-top:12px; font-size:13.5px;}
-  @media (max-width:820px){ .layout{grid-template-columns:1fr;} nav.series{position:static;} }
+  @media (max-width:820px){ .layout{grid-template-columns:minmax(0,1fr);} nav.series{position:static; min-width:0;} }
 </style>
 </head>
 <body>
@@ -85,7 +85,7 @@
 <header>
   <p class="eyebrow">Learn · hadron circuit · brickwork, part 0</p>
   <h1>One Trotter step: the brickwork</h1>
-  <p class="sub">Map of the whole step before the gate-by-gate pages. 12 qubits, current circuit: kinetic 0.30, electric −0.226125, mass 0.03 (sign per site).</p>
+  <p class="sub">Map of the whole step before the gate-by-gate pages. 12 qubits, current circuit at x = 200 (our default): kinetic 0.3, electric −0.226125, mass 0.0424264 (sign per site). At x = 100: kinetic 0.15, mass 0.03, electric the same.</p>
 </header>
 
 <section class="panel">
@@ -118,9 +118,10 @@
     <li>Mass signs: per qubit (− + − + …) → <strong>per site</strong> (− − + + …). See <a href="mass-term.html">Mass term</a>.</li>
     <li>Hadron starting state: 2 flipped qubits in the middle → 4.</li>
     <li>Number of steps: 20 → <strong>11</strong>.</li>
+    <li>Strengths from the group's setting x (since 26.10): x = 200 gives kinetic 0.3 and mass 0.0424264; x = 100 gives 0.15 and 0.03. The picture shows x = 200.</li>
     <li>Bricks, order and qubit pairs: unchanged.</li>
   </ul>
-  <p>The worked examples on the <a href="pair-gate.html">pair gate</a> and <a href="electric-gate.html">electric gate</a> pages use the earlier angles (0.15 and 0.005). Same gates, only the angles differ.</p>
+  <p>The worked examples on the <a href="pair-gate.html">pair gate</a> and <a href="electric-gate.html">electric gate</a> pages use smaller example angles: the pair gate shows 0.15 (x = 100) next to 0.3 (x = 200); the electric gate's picture uses the earlier 0.005. Same gates, only the angles differ.</p>
 </section>
 
 </div>

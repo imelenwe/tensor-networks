@@ -73,7 +73,7 @@
   <ol>
     <li><a href="index.html">← Learn index</a></li>
     <li><a href="#words">Words we use</a></li>
-    <li><a href="#angles">1 · Where 4,020 angles come from</a></li>
+    <li><a href="#angles">1 · Where 4,826 angles come from</a></li>
     <li><a href="#cost">2 · Why not nudge each angle?</a></li>
     <li><a href="#one">3 · One qubit, one angle</a></li>
     <li><a href="#two">4 · A two-qubit gate</a></li>
@@ -123,13 +123,13 @@
 </section>
 
 <section id="angles">
-  <h2>1. Where 4,020 angles come from</h2>
+  <h2>1. Where 4,826 angles come from</h2>
 
   <div class="count">
     <h3>The big picture</h3>
     <p><b>We build</b> the hadron circuit: the <a href="brickwork-step.html">brickwork</a>. It has three kinds of two-qubit gate (pair, electric, SWAP) plus one-qubit rotations. Its numbers are fixed.</p>
     <p><b>IBM's library copies it</b> into a <b>trainable circuit</b>: the same gates in the same places, but each one rebuilt with adjustable angles θ. Training turns the θ's until the copy makes the state we want.</p>
-    <p class="rule">4,020 = the number of θ's in that copy (40 qubits).</p>
+    <p class="rule">4,826 = the number of θ's in that copy (40 qubits, 6-step start).</p>
   </div>
 
   <h3>Our circuit: one step of the brickwork</h3>
@@ -171,7 +171,7 @@
   <p>Let's count the θ's of the 12-qubit trainable circuit, in two parts: the single-qubit part, then the two-qubit gates.</p>
   <p><b>Part 1, single-qubit part.</b> Each of the 12 qubits has one grey start box: 12 boxes × 2 θ's = <b>24 θ's</b>.</p>
   <p class="hint">Our circuit's own one-qubit gates (the 6 X flips at the start, the H gates, the mass Rz's after each step: the grey dashed boxes in the brickwork picture) add <b>no</b> θ's: IBM's copy absorbs them into the ZXZ boxes next to them.</p>
-  <p><b>Part 2, the two-qubit gates.</b> The brickwork picture at the top shows <b>one Trotter step</b>. The trainable circuit repeats that step <b>5 times</b> (5 steps). In the picture, step 1 has 10 orange pair gates (bricks 1–6, 12–15), 7 green SWAPs (bricks 7–11, 16–17) and 6 purple electric gates (bricks 18–23). Steps 2–5 are the same except for <b>3 more SWAPs</b> each: step 1 skips the first SWAP layer.</p>
+  <p><b>Part 2, the two-qubit gates.</b> The brickwork picture at the top shows <b>one Trotter step</b>. The trainable circuit repeats that step <b>6 times</b> (our 6-step start). In the picture, step 1 has 10 orange pair gates (bricks 1–6, 12–15), 7 green SWAPs (bricks 7–11, 16–17) and 6 purple electric gates (bricks 18–23). Steps 2–6 are the same except for <b>3 more SWAPs</b> each: step 1 skips the first SWAP layer.</p>
   <div class="scroll"><table>
     <tr><th>step</th><th>orange: pair</th><th>green: SWAP</th><th>purple: electric</th><th>two-qubit gates</th><th>θ's</th></tr>
     <tr><td class="m">1</td><td class="m">10</td><td class="m">7</td><td class="m">6</td><td class="m">10 + 7 + 6 = 23</td><td class="m">23 × 9 = 207</td></tr>
@@ -179,14 +179,15 @@
     <tr><td class="m">3</td><td class="m">10</td><td class="m">10</td><td class="m">6</td><td class="m">10 + 10 + 6 = 26</td><td class="m">26 × 9 = 234</td></tr>
     <tr><td class="m">4</td><td class="m">10</td><td class="m">10</td><td class="m">6</td><td class="m">10 + 10 + 6 = 26</td><td class="m">26 × 9 = 234</td></tr>
     <tr><td class="m">5</td><td class="m">10</td><td class="m">10</td><td class="m">6</td><td class="m">10 + 10 + 6 = 26</td><td class="m">26 × 9 = 234</td></tr>
-    <tr><th>5 steps</th><td class="m"><b>50</b></td><td class="m"><b>47</b></td><td class="m"><b>30</b></td><td class="m"><b>127</b></td><td class="m"><b>1,143</b></td></tr>
+    <tr><td class="m">6</td><td class="m">10</td><td class="m">10</td><td class="m">6</td><td class="m">10 + 10 + 6 = 26</td><td class="m">26 × 9 = 234</td></tr>
+    <tr><th>6 steps</th><td class="m"><b>60</b></td><td class="m"><b>57</b></td><td class="m"><b>36</b></td><td class="m"><b>153</b></td><td class="m"><b>1,377</b></td></tr>
   </table></div>
-  <p><b>Total:</b> 24 (qubits) + 1,143 (two-qubit gates) = <b>1,167 θ's</b>.</p>
+  <p><b>Total:</b> 24 (qubits) + 1,377 (two-qubit gates) = <b>1,401 θ's</b>.</p>
 
   <h3>40 qubits, counted</h3>
   <p>The same brickwork, taller (20 sites instead of 6).</p>
   <p><b>Part 1, single-qubit part.</b> 40 qubits × 2 θ's = <b>80 θ's</b>.</p>
-  <p><b>Part 2, the two-qubit gates</b>, again one step repeated 5 times. <b>Where do 38, 28 and 20 come from?</b> Count each layer of bricks in the 12-qubit picture (6 sites), see how it grows with the number of sites n, then put in n = 20:</p>
+  <p><b>Part 2, the two-qubit gates</b>, again one step repeated 6 times. <b>Where do 38, 28 and 20 come from?</b> Count each layer of bricks in the 12-qubit picture (6 sites), see how it grows with the number of sites n, then put in n = 20:</p>
   <div class="scroll"><table>
     <tr><th>layer in the picture</th><th>which qubits (12-qubit picture)</th><th>6 sites</th><th>rule</th><th>20 sites</th></tr>
     <tr><td>orange, 1st pair layer (bricks 1–6)</td><td>q0-1, q2-3, …, q10-11: every site</td><td class="m">6</td><td class="m">n</td><td class="m">20</td></tr>
@@ -196,8 +197,8 @@
     <tr><td>green, SWAP layer (bricks 7–11)</td><td>q1-2, q3-4, …, q9-10: between every two neighbouring sites</td><td class="m">5</td><td class="m">n − 1</td><td class="m">19</td></tr>
     <tr><td>green, SWAP layer (bricks 16–17)</td><td>q3-4, q7-8: every 4th qubit</td><td class="m">2</td><td class="m">(n − 1) ÷ 2, rounded down</td><td class="m">9</td></tr>
     <tr><th>SWAPs in step 1</th><td></td><td class="m"><b>7</b></td><td></td><td class="m"><b>28</b></td></tr>
-    <tr><td>green, extra SWAP layer in steps 2–5 (step 1 skips it, so it is not in the picture)</td><td>q1-2, q5-6, q9-10, …: every 4th qubit</td><td class="m">3</td><td class="m">n ÷ 2</td><td class="m">10</td></tr>
-    <tr><th>SWAPs in steps 2–5</th><td></td><td class="m"><b>10</b></td><td></td><td class="m"><b>38</b></td></tr>
+    <tr><td>green, extra SWAP layer in steps 2–6 (step 1 skips it, so it is not in the picture)</td><td>q1-2, q5-6, q9-10, …: every 4th qubit</td><td class="m">3</td><td class="m">n ÷ 2</td><td class="m">10</td></tr>
+    <tr><th>SWAPs in steps 2–6</th><td></td><td class="m"><b>10</b></td><td></td><td class="m"><b>38</b></td></tr>
   </table></div>
   <p class="hint">All three 40-qubit numbers match a direct count of the gates in our code.</p>
   <p>Per step, then:</p>
@@ -208,24 +209,25 @@
     <tr><td class="m">3</td><td class="m">38</td><td class="m">38</td><td class="m">20</td><td class="m">38 + 38 + 20 = 96</td><td class="m">96 × 9 = 864</td></tr>
     <tr><td class="m">4</td><td class="m">38</td><td class="m">38</td><td class="m">20</td><td class="m">38 + 38 + 20 = 96</td><td class="m">96 × 9 = 864</td></tr>
     <tr><td class="m">5</td><td class="m">38</td><td class="m">38</td><td class="m">20</td><td class="m">38 + 38 + 20 = 96</td><td class="m">96 × 9 = 864</td></tr>
-    <tr><th>5 steps</th><td class="m"><b>190</b></td><td class="m"><b>180</b></td><td class="m"><b>100</b></td><td class="m"><b>470</b></td><td class="m"><b>4,230</b></td></tr>
+    <tr><td class="m">6</td><td class="m">38</td><td class="m">38</td><td class="m">20</td><td class="m">38 + 38 + 20 = 96</td><td class="m">96 × 9 = 864</td></tr>
+    <tr><th>6 steps</th><td class="m"><b>228</b></td><td class="m"><b>218</b></td><td class="m"><b>120</b></td><td class="m"><b>566</b></td><td class="m"><b>5,094</b></td></tr>
   </table></div>
-  <p><b>Total:</b> 80 + 4,230 = <b>4,310 θ's</b>.</p>
+  <p><b>Total:</b> 80 + 5,094 = <b>5,174 θ's</b>.</p>
 
   <h3>Last step: one θ per pair and electric gate is switched off</h3>
   <p>The KAK box has 3 θ's because two qubits can act on each other in three ways (called XX, YY and ZZ). Our <b>pair</b> and <b>electric</b> gates never use the third way, ZZ: its θ starts at 0. We <b>keep that θ fixed at 0</b> instead of training it, because then each of these gates needs one CNOT fewer on hardware (3 → 2). SWAPs use all three ways, so theirs stay.</p>
   <p>So: <b>one θ fewer for every pair and every electric gate.</b></p>
-  <p>The numbers of pair and electric gates are the "5 steps" row of the tables above:</p>
+  <p>The numbers of pair and electric gates are the "6 steps" row of the tables above:</p>
   <div class="scroll"><table>
     <tr><th></th><th>θ's before</th><th>pair gates</th><th>electric gates</th><th>θ's switched off</th><th>trainable θ's</th></tr>
-    <tr><td>12 qubits</td><td class="m">1,167</td><td class="m">50</td><td class="m">30</td><td class="m">50 + 30 = 80</td><td class="m">1,167 − 80 = <b>1,087</b></td></tr>
-    <tr><td>40 qubits</td><td class="m">4,310</td><td class="m">190</td><td class="m">100</td><td class="m">190 + 100 = 290</td><td class="m">4,310 − 290 = <b>4,020</b> ✓ the summary.md</td></tr>
+    <tr><td>12 qubits</td><td class="m">1,401</td><td class="m">60</td><td class="m">36</td><td class="m">60 + 36 = 96</td><td class="m">1,401 − 96 = <b>1,305</b></td></tr>
+    <tr><td>40 qubits</td><td class="m">5,174</td><td class="m">228</td><td class="m">120</td><td class="m">228 + 120 = 348</td><td class="m">5,174 − 348 = <b>4,826</b> ✓ a direct count in our code</td></tr>
   </table></div>
   <details><summary class="hint">Inside the KAK box (3 CNOTs; the ZZ θ sits in the Rz)</summary>
   <img src="kak-block-inside.png" alt="Inside the KAK block: three CNOTs with rotations using its three angles" style="max-width:100%;height:auto;border-radius:8px;background:#fff"></details>
   <div class="ex">
-    <div class="q"><span class="lbl">a) 12 qubits: 50 pair, 30 electric, 47 SWAPs, 12 qubits. How many θ's?</span><input data-ans="1087" data-tol="0.5"></div>
-    <div class="q"><span class="lbl">b) 40 qubits if we did <b>not</b> lock ZZ (pair and electric then 9 each)?</span><input data-ans="4310" data-tol="0.5"></div>
+    <div class="q"><span class="lbl">a) 12 qubits: 60 pair, 36 electric, 57 SWAPs, 12 qubits. How many θ's?</span><input data-ans="1305" data-tol="0.5"></div>
+    <div class="q"><span class="lbl">b) 40 qubits if we did <b>not</b> lock ZZ (pair and electric then 9 each)?</span><input data-ans="5174" data-tol="0.5"></div>
   </div>
   <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
 </section>
@@ -233,10 +235,10 @@
 <section id="cost">
   <h2>2. Why not nudge each angle?</h2>
   <p>Training needs a slope for every angle at every training step. The obvious way: nudge one angle a tiny bit, simulate the circuit again, see how much L moved; repeat for each angle.</p>
-  <div class="key"><b>The cost of nudging:</b> one extra simulation per angle: <b>4,020 simulations</b> for one training step, and training takes hundreds of steps. <b>The cost of backprop:</b> one forward pass and one backward pass, about <b>2 simulations</b>, for all 4,020 slopes at once. Sections 3–5 show how.</div>
+  <div class="key"><b>The cost of nudging:</b> one extra simulation per angle: <b>4,826 simulations</b> for one training step, and training takes hundreds of steps. <b>The cost of backprop:</b> one forward pass and one backward pass, about <b>2 simulations</b>, for all 4,826 slopes at once. Sections 3–5 show how.</div>
   <div class="ex">
-    <div class="q"><span class="lbl">a) Extra simulations to nudge every angle once (40 qubits)</span><input data-ans="4020" data-tol="0.5"></div>
-    <div class="q"><span class="lbl">b) Roughly how many times cheaper is backprop (4,020 ÷ 2)?</span><input data-ans="2010" data-tol="10"></div>
+    <div class="q"><span class="lbl">a) Extra simulations to nudge every angle once (40 qubits)</span><input data-ans="4826" data-tol="0.5"></div>
+    <div class="q"><span class="lbl">b) Roughly how many times cheaper is backprop (4,826 ÷ 2)?</span><input data-ans="2413" data-tol="10"></div>
   </div>
   <div class="btns"><button class="primary" data-check>Check</button><button data-reveal>Show the answers</button></div>
 </section>
@@ -367,8 +369,8 @@ L     = 1 − 0.5625 = 0.4375
 <section id="many">
   <h2>5. All slopes at once</h2>
   <div class="count">
-    <p><b>Why:</b> sections 3 and 4 each found <b>one</b> slope. Our circuit has <b>4,020</b> angles, and nudging each one costs 4,020 simulations per training step.</p>
-    <p><b>How jax does it, in one line:</b> jax records every multiply-and-add used to compute o = ⟨T|circuit|0⟩, keeps every in-between result, then runs the chain rule backwards over that record. That gives all 4,020 slopes for about the cost of 2 simulations, but storing every in-between result is what asked for <b>1.5 TB</b> at 120 qubits. Section 6 shows a method that needs about 8 GB; section 7 walks through jax step by step.</p>
+    <p><b>Why:</b> sections 3 and 4 each found <b>one</b> slope. Our circuit has <b>4,826</b> angles, and nudging each one costs 4,826 simulations per training step.</p>
+    <p><b>How jax does it, in one line:</b> jax records every multiply-and-add used to compute o = ⟨T|circuit|0⟩, keeps every in-between result, then runs the chain rule backwards over that record. That gives all 4,826 slopes for about the cost of 2 simulations, but storing every in-between result is what asked for <b>1.5 TB</b> at 120 qubits. Section 6 shows a method that needs about 8 GB; section 7 walks through jax step by step.</p>
   </div>
 </section>
 
@@ -405,9 +407,9 @@ Layer 1   (target side: B1)
   </div>
 
   <h3 id="improve-circuit">6.1 Which circuit: 3 qubits</h3>
-  <p>Section 1's piece: a pair gate on q0, q1, a SWAP on q1, q2, an electric gate on q0, q1.</p>
+  <p>Section 1's piece: an X on q1 (the start |010⟩), then a pair gate on q0, q1, a SWAP on q1, q2, an electric gate on q0, q1. The X matters: without it, the pair and electric gates leave |000⟩ unchanged, and the example has nothing to train.</p>
   <img src="three-gates.png" alt="Pair gate on q0 q1, then SWAP on q1 q2, then electric gate on q0 q1" style="max-width:100%;height:auto;border-radius:8px;background:#fff">
-  <p class="hint">The picture shows the gates' shapes (drawn with x = 100 strengths). The numbers below use our 5-step start at x = 200: each strength × 6/5, so pair 0.3 × 6/5 = 0.36 and electric −0.226125 × 6/5 = −0.27135.</p>
+  <p class="hint">The picture shows the gates' shapes (drawn with x = 100 strengths). The numbers below use the x = 200 strengths × 6/5: pair 0.3 × 6/5 = 0.36 and electric −0.226125 × 6/5 = −0.27135. (× 6/5 is the scaling of a 5-step start; our 6-step start uses × 11/6. The example works the same way with either.)</p>
   <p>IBM's trainable copy of it:</p>
   <img src="three-gates-trainable.png" alt="ZXZ box on each qubit at the start; then for each of the three gates a KAK box followed by a ZXZ box on each of its two qubits" style="max-width:100%;height:auto;border-radius:8px;background:#fff">
   <div class="scroll"><table>
@@ -416,9 +418,9 @@ Layer 1   (target side: B1)
     <tr><td>locked at 0 (the ZZ θ of the pair and electric KAK, section 1)</td><td class="m">θ[8], θ[26]</td></tr>
     <tr><td>trained</td><td class="m">33 − 2 = <b>31</b></td></tr>
     <tr><td>starting angles: the library picks them so the trainable circuit equals the circuit above exactly</td><td class="m">θ[6] = θ[7] = 0.18, θ[24] = 0.0678, θ[17] = 0.7854, …</td></tr>
-    <tr><td><b>target T (assumption)</b>: the same trainable circuit with three angles changed</td><td class="m">θ[6] = θ[7] = θ[24] = 0.349</td></tr>
+    <tr><td><b>target T (assumption)</b>: the same trainable circuit with three angles changed</td><td class="m">θ[6] = θ[7] = θ[24] = 20° (0.3491 rad)</td></tr>
   </table></div>
-  <p class="hint">All angles are in radians from here on (0.349 rad = 20°). The target is made up so that we know where the angles should go. A real target comes from the deep Trotter circuit; none of the steps below change.</p>
+  <p class="hint">All angles are in radians from here on (20° = 0.3490659 rad; the numbers below need exactly 20°, not 0.349). The target is made up so that we know where the angles should go. A real target comes from the deep Trotter circuit; none of the steps below change.</p>
 
   <h3 id="improve-layers">6.2 Step 0: split the circuit into layers</h3>
   <p>A <b>layer</b> is a group of two-qubit blocks that share no qubit, so they can be applied together. Each block goes one layer after the last block that used one of its qubits. Here every block uses q1, so each block waits for the one before it: <b>3 layers, one block each</b>. Each start ZXZ joins the first block on its qubit.</p>
@@ -438,6 +440,7 @@ Layer 1   (target side: B1)
     <tr><td class="m">3</td><td class="m">S2</td><td>layer 3</td><td class="m">S3 = final state</td></tr>
     <tr><td>compare</td><td class="m">S3 with T</td><td></td><td class="m">o = ⟨T|S3⟩ = 0.9063 − 0.1361i</td></tr>
   </table></div>
+  <p class="hint">"Kept" here means kept in memory for the backward pass, which is the picture for keeping every state (stride 1). The real code keeps one state every 6 layers and rebuilds the others when it needs them (<a href="layer-gradient-code.html#forward">Layer Gradient Code, section 4</a>).</p>
 <pre>F = |o|² = 0.9063² + 0.1361²
          = 0.8214 + 0.0185 = 0.8399
 L = 1 − F = 1 − 0.8399 = 0.1601</pre>

@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layer Gradient Code</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,650&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Same look as the Circuit Backprop Workbook: left nav, one column */
+  :root{
+    --bg:#F4F6F8; --paper:#FFFFFF; --ink:#18222D; --muted:#5A6878; --rule:#D5DCE3; --node:#EEF2F6;
+    --acc:#0F7A72; --acc-soft:#D9F0EC; --warm:#B4690E; --warm-soft:#FBEBD6; --card:#5B3FB8; --card-soft:#EEE9FB;
+    --display:'Source Serif 4', Georgia, serif; --body:'IBM Plex Sans', system-ui, sans-serif; --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#11161C; --paper:#19212A; --ink:#E7ECF1; --muted:#97A5B4; --rule:#2C3743; --node:#202A35;
+    --acc:#5CCBC0; --acc-soft:#123430; --warm:#F0A548; --warm-soft:#3A2A14; --card:#B7A4F5; --card-soft:#251E3D; color-scheme:dark } }
+  :root[data-theme="dark"]{
+    --bg:#11161C; --paper:#19212A; --ink:#E7ECF1; --muted:#97A5B4; --rule:#2C3743; --node:#202A35;
+    --acc:#5CCBC0; --acc-soft:#123430; --warm:#F0A548; --warm-soft:#3A2A14; --card:#B7A4F5; --card-soft:#251E3D; color-scheme:dark }
+  *{box-sizing:border-box}
+  body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.6; padding-inline:16px; padding-block:24px 72px; margin:0}
+  .layout{max-width:1100px; margin:0 auto; display:grid; grid-template-columns:200px minmax(0,1fr); gap:20px; align-items:start}
+  nav{position:sticky; top:16px; background:var(--paper); border:1px solid var(--rule); border-radius:10px; padding:12px; max-height:calc(100vh - 32px); overflow-y:auto}
+  nav p{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+  nav ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+  nav a{display:block; padding:5px 8px; border-radius:6px; color:var(--ink); text-decoration:none; font-size:14px}
+  nav a:hover{background:var(--node)}
+  nav li.sub a{padding-left:22px; font-size:13px; color:var(--muted); font-family:var(--mono)}
+  nav li.sub a:hover{color:var(--ink)}
+  @media (max-width:600px){ .layout{grid-template-columns:minmax(0,1fr)} nav{position:static; padding:8px; min-width:0; max-height:none} nav p{display:none}
+    nav ol{flex-direction:row; overflow-x:auto} nav a{white-space:nowrap} nav li.sub{display:none} }
+  main{display:flex; flex-direction:column; gap:18px; min-width:0}
+  h1,h2,h3{font-family:var(--display); text-wrap:balance; margin:0; line-height:1.2}
+  h1{font-size:clamp(26px,5vw,34px)} h2{font-size:21px} h3{font-size:17px}
+  p{margin:0; max-width:72ch}
+  ul{margin:0; padding-left:20px} li{max-width:70ch}
+  section{background:var(--paper); border:1px solid var(--rule); border-radius:10px; padding:18px; display:flex; flex-direction:column; gap:12px; min-width:0; scroll-margin-top:16px}
+  code,.m{font-family:var(--mono); font-size:.9em}
+  p code, li code, td code{overflow-wrap:anywhere}
+  .hint{color:var(--muted); font-size:14px}
+  .scroll{overflow-x:auto; max-width:100%}
+  pre{white-space:pre-wrap; overflow-wrap:anywhere; font-family:var(--mono); font-size:13.5px; background:var(--node); border-radius:8px; padding:10px 14px; margin:0; line-height:1.45}
+  table{border-collapse:collapse; font-size:15px}
+  th,td{border-bottom:1px solid var(--rule); padding:6px 10px; text-align:left; vertical-align:top}
+  th{font-weight:600; color:var(--muted); font-size:13px}
+  td.m{white-space:nowrap}
+  @media (max-width:600px){ td.m, table.vocab td.word{white-space:normal} section{padding:14px} pre{font-size:11.5px; padding:8px 10px} th,td{padding:6px 7px} table{font-size:14px} }
+  table.vocab{border-left:3px solid var(--acc); background:var(--acc-soft); border-radius:0 8px 8px 0; font-size:14.5px}
+  table.vocab td.word{font-weight:600; white-space:nowrap}
+  table.vocab .aka{color:var(--muted); font-style:italic; font-size:13.5px}
+  .key{border-left:3px solid var(--warm); background:var(--warm-soft); padding:10px 14px; border-radius:0 8px 8px 0; max-width:74ch; display:flex; flex-direction:column; gap:6px}
+  .method{border:1px solid var(--rule); border-left:4px solid var(--card); border-radius:0 10px 10px 0; padding:14px 16px; display:flex; flex-direction:column; gap:10px; scroll-margin-top:16px}
+  .method h3 code{font-size:.95em; color:var(--card)}
+  .method .file{font-family:var(--mono); font-size:12.5px; color:var(--muted)}
+  table.facts td:first-child{font-weight:600; white-space:nowrap; color:var(--muted); font-size:14px; width:5.5em}
+  details.lines{border:1px solid var(--rule); border-radius:8px; padding:8px 12px; background:var(--node)}
+  details.lines summary{cursor:pointer; font-weight:600; font-size:14.5px}
+  details.lines[open] summary{margin-bottom:8px}
+  details.lines pre{background:var(--paper)}
+  details.lines table{font-size:14px}
+  .limit{font-size:14.5px; color:var(--muted); max-width:72ch}
+  .limit b{color:var(--ink)}
+  input:focus-visible, nav a:focus-visible, summary:focus-visible{outline:2px solid var(--acc); outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav aria-label="Sections">
+  <p>Layer gradient code</p>
+  <ol>
+    <li><a href="index.html">← Learn index</a></li>
+    <li><a href="#start">0 · Before you start</a></li>
+    <li class="sub"><a href="#words">the words</a></li>
+    <li class="sub"><a href="#names">short names in the code</a></li>
+    <li><a href="#call">1 · One call, top to bottom</a></li>
+    <li class="sub"><a href="#objective">LayerGradientObjective</a></li>
+    <li class="sub"><a href="#files">file → section</a></li>
+    <li><a href="#setup">2 · Setup, once per training</a></li>
+    <li class="sub"><a href="#read_boxes">read_boxes</a></li>
+    <li class="sub"><a href="#merge_into_blocks">merge_into_blocks</a></li>
+    <li class="sub"><a href="#target_as_chain">target_as_chain</a></li>
+    <li><a href="#matrices">3 · Angles → block matrices</a></li>
+    <li class="sub"><a href="#block_matrices">block_matrices</a></li>
+    <li class="sub"><a href="#_on_block">_on_block</a></li>
+    <li><a href="#forward">4 · Forward pass</a></li>
+    <li class="sub"><a href="#forward_and_backward">forward_and_backward</a></li>
+    <li class="sub"><a href="#split_into_layers">split_into_layers</a></li>
+    <li class="sub"><a href="#all_zeros_chain">all_zeros_chain</a></li>
+    <li class="sub"><a href="#apply_layer">apply_layer</a></li>
+    <li class="sub"><a href="#apply_block">apply_block</a></li>
+    <li class="sub"><a href="#move_centre">move_centre</a></li>
+    <li class="sub"><a href="#overlap">overlap</a></li>
+    <li><a href="#backward">5 · Backward layer pass</a></li>
+    <li class="sub"><a href="#loop">the backward loop</a></li>
+    <li class="sub"><a href="#layer_tables">layer_tables</a></li>
+    <li class="sub"><a href="#grow">_grow_from_left/right</a></li>
+    <li class="sub"><a href="#_table">_table</a></li>
+    <li><a href="#slopes">6 · Chain rule → slopes</a></li>
+    <li class="sub"><a href="#loss_and_slopes">loss_and_slopes</a></li>
+    <li><a href="#speed">7 · Where the time goes</a></li>
+    <li><a href="#meeting">8 · For the meeting</a></li>
+  </ol>
+</nav>
+<main>
+<header style="display:flex;flex-direction:column;gap:6px">
+  <h1>Layer Gradient Code</h1>
+  <p class="hint">A method-by-method guide to <code>hadron-aqc/layer_gradient/simplified/</code>. For each method: what it does, what goes in and what comes out, why it exists, and one real example on 3 qubits. The idea behind the method is in the <a href="circuit-backprop-workbook.html#improve">Circuit Backprop Workbook, section 6</a>; chains, splits and trimming are in the <a href="tensor-chain-workbook.html">Tensor Chain Workbook</a>. This page starts where <a href="circuit-backprop-workbook.html#improve-fast">workbook 6.8</a> ("How the real code does it faster") ends. The code: <a href="https://github.com/imelenwe/tensor-networks/blob/main/hadron-aqc/layer_gradient/simplified/">layer_gradient/simplified/</a> (its own map: <a href="https://github.com/imelenwe/tensor-networks/blob/main/hadron-aqc/layer_gradient/simplified/CODE_MAP.md">CODE_MAP.md</a>).</p>
+</header>
+
+<!-- ================================================================== 0 -->
+<section id="start">
+  <h2>0. Before you start</h2>
+  <div class="key">
+    <p><b>Which version runs?</b> Training uses <code>source/</code> by default: the collaborator's original files, unchanged. <code>simplified/</code> is our shorter rewrite of the same method. Both pass the same 8 tests, and their slopes agree.</p>
+    <p>This page reads <code>simplified/</code>, because it is shorter. To run it, set <code>LAYER_GRADIENT_VERSION=simplified</code>.</p>
+  </div>
+
+  <h3>The example on this page</h3>
+  <p>The example is the workbook's 3-qubit circuit. The physics circuit starts with an X on q1 (start |010⟩). Then come three physics gates: a pair gate on q0, q1, a SWAP on q1, q2, and an electric gate on q0, q1. Each physics gate becomes one <b>block</b> of the trainable circuit.</p>
+  <p>The trainable circuit comes from IBM's library (<code>qiskit-addon-aqc-tensor</code>, function <code>generate_ansatz_from_circuit</code>). It always starts from |000⟩. The library folds the X on q1 into the one-qubit boxes of the first blocks. It also moves one-qubit rotations between neighbour blocks. So one block on its own is not exactly one physics gate. Only all blocks together equal the physics circuit (checked: the final state equals Qiskit's statevector).</p>
+  <div class="scroll"><table>
+    <tr><th>what</th><th>value</th></tr>
+    <tr><td>angles in IBM's trainable circuit</td><td class="m">θ[0] … θ[32] = 33</td></tr>
+    <tr><td>locked at 0 (the ZZ angle of the pair and electric KAK)</td><td class="m">θ[8], θ[26]</td></tr>
+    <tr><td>trained angles</td><td class="m">33 − 2 = <b>31</b></td></tr>
+    <tr><td>angle numbers in the code (0 … 30)</td><td class="m">θ[0]–θ[7] → 0–7<br>θ[9]–θ[25] → 8–24 (θ − 1)<br>θ[27]–θ[32] → 25–30 (θ − 2)</td></tr>
+    <tr><td>target T: the trainable circuit with three angles changed</td><td class="m">θ[6], θ[7]: 0.18 → 0.3491 rad (20°)<br>θ[24]: 0.0678 → 0.3491 rad (20°)</td></tr>
+    <tr><td>overlap at the starting angles</td><td class="m">o = ⟨T|S3⟩ = 0.906316 − 0.136132i</td></tr>
+    <tr><td>loss</td><td class="m">L = 1 − |o|² = 0.160060</td></tr>
+  </table></div>
+  <p class="hint">All numbers on this page come from running the code on this example (max_bond 64, stride 6, complex128). The page writes θ names, like the workbook; the code uses the angle numbers.</p>
+  <p class="hint"><b>One difference from the workbook.</b> The loop variables in the code count layers 0, 1, 2. The workbook, and the docstring at the top of <code>forward_backward_pass.py</code>, count them 1, 2, 3. So the docstring's "layer k, S_(k−1), B_k" is this page's "layer n = k − 1, S<sub>n</sub>, B<sub>n+1</sub>".</p>
+
+  <h3 id="words">The words on this page</h3>
+  <p>Each word has one meaning on this page. Under each meaning is its name in papers and in the code.</p>
+  <div class="scroll"><table class="vocab">
+    <thead><tr><th>word</th><th>meaning <span style="font-weight:400">(also called)</span></th></tr></thead>
+    <tbody>
+      <tr><td class="word">chain</td><td>a state stored as a list of small arrays, one array per qubit<br><span class="aka">also called: MPS</span></td></tr>
+      <tr><td class="word">site</td><td>one array of the chain. It has three indices: (left link, the qubit's 0/1, right link). Its <b>site number</b> is its position, the same as the qubit number<br><span class="aka">also called: tensor, chain[q]</span></td></tr>
+      <tr><td class="word">link</td><td>the index that two neighbour sites share. Its <b>link size</b> is how many values it has<br><span class="aka">also called: bond, bond dimension</span></td></tr>
+      <tr><td class="word">max_bond</td><td>the largest link size that trimming keeps<br><span class="aka">also called: bond cap, χ</span></td></tr>
+      <tr><td class="word">join</td><td>multiply two arrays and sum over the index they share. Joining is never addition<br><span class="aka">also called: contract, tensordot</span></td></tr>
+      <tr><td class="word">weight</td><td>one number from an SVD split, which tells how much the state needs that link value<br><span class="aka">also called: singular value</span></td></tr>
+      <tr><td class="word">trim</td><td>keep at most <code>max_bond</code> weights, and drop the weights below 10⁻¹² × the largest (<code>TRIM_CUTOFF</code>)<br><span class="aka">also called: truncation</span></td></tr>
+      <tr><td class="word">length²</td><td>the sum of all |amplitude|² of a state: 1 for a proper state<br><span class="aka">also called: norm²</span></td></tr>
+      <tr><td class="word">centre</td><td>the one site that holds the weights. All other sites are plain rotations (the Q of a QR split): they do not change length²<br><span class="aka">also called: orthogonality centre</span></td></tr>
+      <tr><td class="word">box</td><td>one instruction of IBM's trainable circuit: a ZXZ box (Rz · Rx · Rz, one qubit) or a KAK box (exp(i(a XX + b YY + c ZZ)), two neighbour qubits)<br><span class="aka">also called: instruction</span></td></tr>
+      <tr><td class="word">block</td><td>one KAK box plus the ZXZ boxes merged into it. It is <b>one 4 × 4 matrix</b> on sites (site, site + 1). Its rows are (out1 out2) and its columns (in1 in2)<br><span class="aka">also called: block matrix</span></td></tr>
+      <tr><td class="word">in1, in2 / out1, out2</td><td>the 0/1 of the block's first and second site, before and after the block. The first site is the more significant bit: index = 2 × in1 + in2</td></tr>
+      <tr><td class="word">gate</td><td>in <code>forward_backward_pass.py</code>: two values, a block's site and its 4 × 4 matrix<br><span class="aka">also called: <code>gates[index] = (site, block)</code></span></td></tr>
+      <tr><td class="word">part</td><td>one box inside a block, with its place: "first", "second" or "both" sites<br><span class="aka">also called: block.parts</span></td></tr>
+      <tr><td class="word">layer</td><td>blocks that share no qubit, applied together<br><span class="aka">also called: moment</span></td></tr>
+      <tr><td class="word">forward state S<sub>k</sub></td><td>|0…0⟩ with the first k layers applied<br><span class="aka">also called: ψ_k</span></td></tr>
+      <tr><td class="word">target side B<sub>k</sub></td><td>the target T with every layer after the first k undone. B<sub>k</sub> pairs with S<sub>k</sub>. The last one is T itself (B3 = T in the example)<br><span class="aka">also called: adjoint state, target_side</span></td></tr>
+      <tr><td class="word">o</td><td>the overlap ⟨T|S<sub>final</sub>⟩, one complex number<br><span class="aka">also called: <code>value</code> in the code</span></td></tr>
+      <tr><td class="word">layer overlap</td><td>⟨B<sub>n+1</sub>| layer n |S<sub>n</sub>⟩. It equals o for every layer when nothing is trimmed: a check<br><span class="aka">also called: layer_overlaps</span></td></tr>
+      <tr><td class="word">undo</td><td>apply a block's conjugate transpose<br><span class="aka">also called: G†, <code>undo=True</code></span></td></tr>
+      <tr><td class="word">piece</td><td>in one layer, either one block (two sites) or one site with no block<br><span class="aka">also called: pieces</span></td></tr>
+      <tr><td class="word">sweep</td><td>go along the chain, one site or piece at a time, from one end to the other<br><span class="aka">also called: walk</span></td></tr>
+      <tr><td class="word">slope</td><td>dL/dθ: how much L changes per unit change of one angle. There is one slope per trained angle. scipy gets these<br><span class="aka">also called: gradient entry</span></td></tr>
+      <tr><td class="word">overlap slope</td><td>do/dθ: how much o changes per unit change of one angle<br><span class="aka">also called: <code>overlap_slopes</code></span></td></tr>
+      <tr><td class="word">table</td><td>16 numbers per block. Each entry tells how much o changes per unit change of that block entry<br><span class="aka">also called: environment, ∂o/∂(block)</span></td></tr>
+      <tr><td class="word">change matrix</td><td>4 × 4 numbers per block and angle: how much the block matrix changes per unit change of that angle<br><span class="aka">also called: ∂(block)/∂θ, <code>changes</code></span></td></tr>
+      <tr><td class="word">nudge</td><td>estimate a change from two runs: move one angle by ±10⁻⁶, subtract the results, divide by 2 × 10⁻⁶<br><span class="aka">also called: central difference, <code>NUDGE</code></span></td></tr>
+      <tr><td class="word">stride</td><td>the forward pass keeps the state before every stride-th layer (default 6)<br><span class="aka">also called: checkpoint interval</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="names">Short names in the code</h3>
+  <p>Most names say what they hold: <code>first_free_layer</code>, <code>from_left</code>, <code>states_before</code>, <code>target_side</code>, <code>weights_go_right</code>. These are the short ones:</p>
+  <div class="scroll"><table>
+    <tr><th>name</th><th>where</th><th>what it is</th></tr>
+    <tr><td class="m">xp</td><td>everywhere</td><td>the array library: numpy (CPU) or cupy (GPU)</td></tr>
+    <tr><td class="m">value</td><td><code>objective, forward_and_backward</code></td><td>o = ⟨T|S<sub>final</sub>⟩</td></tr>
+    <tr><td class="m">x</td><td>three meanings</td><td>the group's setting (x = 200); in <code>matrix_at(x)</code>: the full list of angles; in <code>_table</code>: the ket side around the block</td></tr>
+    <tr><td class="m">q, r</td><td><code>move_centre</code></td><td>the two factors of a QR split: a plain rotation, and the rest</td></tr>
+    <tr><td class="m">u, vh</td><td><code>apply_block</code></td><td>the two factors of an SVD split, around the weights</td></tr>
+    <tr><td class="m">t</td><td><code>_grow_from_left/right</code></td><td>the partial result in the middle of one step</td></tr>
+    <tr><td class="m">y</td><td><code>_table</code></td><td>the two conjugated bra sites, joined</td></tr>
+    <tr><td class="m">p</td><td><code>layer_tables</code></td><td>a piece number</td></tr>
+    <tr><td class="m">kept</td><td>two meanings</td><td>in <code>forward_and_backward</code>: the dict of saved states; in <code>apply_block</code>: the number of weights kept</td></tr>
+    <tr><td class="m">i, j, k</td><td><code>two_qubit_blocks_to_matrices</code></td><td>i: an angle number; j: a box number; k: a part number</td></tr>
+    <tr><td class="m">q</td><td><code>target_as_chain</code></td><td>a qubit (= site) number</td></tr>
+    <tr><td class="m">B, K, in, out</td><td>shape comments</td><td>bra link, ket link, a qubit's 0/1 before and after the block. This B is not the target side B<sub>k</sub></td></tr>
+    <tr><td class="m">cutoff</td><td><code>apply_block</code></td><td>10⁻¹² (<code>TRIM_CUTOFF</code>): drop weights below cutoff × the largest</td></tr>
+    <tr><td class="m">where</td><td><code>_on_block</code></td><td>a part's place: "first", "second" or "both"</td></tr>
+  </table></div>
+</section>
+
+<!-- ================================================================== 1 -->
+<section id="call">
+  <h2>1. One call, top to bottom</h2>
+  <p>scipy's L-BFGS-B calls the objective at least once per training step. It sends the angles. It gets back L and one slope per angle. This is everything that happens in one call, on the 3-qubit example:</p>
+<pre>scipy (L-BFGS-B) sends 31 angles
+  ▼
+LayerGradientObjective(angles)
+  [objective.py]
+
+1. block_matrices(blocks, boxes, angles)
+   [two_qubit_blocks_to_matrices.py]
+   → 3 block matrices (4 × 4)
+   → 31 change matrices (4 × 4),
+     one per angle: 12 + 11 + 8
+   gates = [(block.site, matrix)]
+
+2. forward_and_backward(gates, ...)
+   [forward_backward_pass.py]
+   split_into_layers → [[0], [1], [2]]
+   forward: S0 → S1 → S2 → S3
+     (apply_layer → apply_block)
+   o = overlap(T, S3)
+     = 0.906316 − 0.136132i
+   backward, layer 2, then 1, then 0:
+     layer_tables(B, S before)
+       → 1 table per block
+     apply_layer(..., undo=True) on B
+   → o, 3 tables (4 × 4),
+     3 layer overlaps
+
+3. loss_and_slopes(o, tables, changes, 31)
+   [objective.py]
+   → L = 0.160060, 31 slopes
+  ▼
+scipy gets (L, 31 slopes)</pre>
+  <p>The angles never change inside one call. scipy changes them between calls.</p>
+  <div class="method" id="objective">
+    <h3><code>LayerGradientObjective(ansatz, target_mps, settings)</code></h3>
+    <p class="file"><a href="https://github.com/imelenwe/tensor-networks/blob/main/hadron-aqc/layer_gradient/simplified/objective.py">objective.py</a></p>
+    <table class="facts">
+      <tr><td>__init__</td><td>Runs once per training. <code>ansatz</code> = the trainable circuit, <code>target_mps</code> = T from quimb, <code>settings</code> = max_bond, stride, use_gpu, single_precision. It calls <code>read_boxes</code> (12 boxes), <code>merge_into_blocks</code> (3 blocks) and <code>target_as_chain</code> (T as a chain). It picks numpy or cupy as <code>xp</code>, and complex128 or complex64 as the number type.</td></tr>
+      <tr><td>__call__</td><td><code>objective(angles)</code> → (L, slopes). scipy calls this.</td></tr>
+      <tr><td>_passes</td><td>Sections 3 to 5: block matrices, then <code>forward_and_backward</code>. It converts each block matrix to an <code>xp</code> array of the chosen number type, as a gate (site, matrix). Then <code>__call__</code> runs <code>loss_and_slopes</code> (section 6). On a GPU it first copies the tables back to normal memory.</td></tr>
+      <tr><td>layer_overlaps</td><td>Returns the layer overlaps (section 5), for the test.</td></tr>
+    </table>
+    <p class="limit"><b>Errors:</b> it stops if T has a different number of sites than the circuit has qubits.</p>
+  </div>
+  <h3 id="files">File → section</h3>
+  <p>The page follows the order of one call. To read the code file by file, use this map:</p>
+  <div class="scroll"><table>
+    <tr><th>file (in reading order)</th><th>methods</th><th>here</th></tr>
+    <tr><td><a href="https://github.com/imelenwe/tensor-networks/blob/main/hadron-aqc/layer_gradient/simplified/tensor_chain.py"><code>tensor_chain.py</code></a></td><td><code>all_zeros_chain</code>, <code>move_centre</code>, <code>apply_block</code>, <code>overlap</code></td><td><a href="#forward">4</a></td></tr>
+    <tr><td><a href="https://github.com/imelenwe/tensor-networks/blob/main/hadron-aqc/layer_gradient/simplified/forward_backward_pass.py"><code>forward_backward_pass.py</code></a></td><td><code>split_into_layers</code>, <code>apply_layer</code>, <code>_grow_from_left/right</code>, <code>_table</code>, <code>layer_tables</code>, <code>forward_and_backward</code></td><td><a href="#forward">4</a>, <a href="#backward">5</a></td></tr>
+    <tr><td><a href="https://github.com/imelenwe/tensor-networks/blob/main/hadron-aqc/layer_gradient/simplified/two_qubit_blocks_to_matrices.py"><code>two_qubit_blocks_to_matrices.py</code></a></td><td><code>read_boxes</code>, <code>merge_into_blocks</code>, <code>_on_block</code>, <code>block_matrices</code></td><td><a href="#setup">2</a>, <a href="#matrices">3</a></td></tr>
+    <tr><td><a href="https://github.com/imelenwe/tensor-networks/blob/main/hadron-aqc/layer_gradient/simplified/objective.py"><code>objective.py</code></a></td><td><code>loss_and_slopes</code>, <code>target_as_chain</code>, <code>LayerGradientObjective</code></td><td><a href="#objective">1</a>, <a href="#target_as_chain">2</a>, <a href="#slopes">6</a></td></tr>
+  </table></div>
+  <div class="scroll"><table>
+    <tr><th>size</th><th>3 qubits</th><th>12 qubits (x = 200, 6-step start, meson, ZZ zeroed out)</th></tr>
+    <tr><td>trained angles</td><td class="m">31</td><td class="m">1,305</td></tr>
+    <tr><td>boxes</td><td class="m">12 (9 ZXZ, 3 KAK)</td><td class="m">471 (318 ZXZ, 153 KAK)</td></tr>
+    <tr><td>blocks</td><td class="m">3</td><td class="m">153: 60 pair, 57 SWAP, 36 electric</td></tr>
+    <tr><td>layers</td><td class="m">3</td><td class="m">35 (2 to 6 blocks each)</td></tr>
+    <tr><td>largest link size</td><td class="m">2</td><td class="m">64 (= 2⁶, the most 12 qubits can need)</td></tr>
+    <tr><td>one call</td><td class="m">—</td><td class="m">0.81 s (max_bond 64; median, <a href="#speed">section 7</a>)</td></tr>
+  </table></div>
+</section>
+
+<!-- ================================================================== 2 -->
+<section id="setup">
+  <h2>2. Setup, once per training</h2>
+  <p><code>LayerGradientObjective.__init__</code> (<a href="#objective">section 1</a>) runs these three methods once.</p>
+
+  <div class="method" id="read_boxes">
+    <h3><code>read_boxes(ansatz)</code></h3>
+    <p class="file">two_qubit_blocks_to_matrices.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Makes one <b>Box</b> per instruction of the trainable circuit. A Box keeps its qubits, the numbers of its angles, and a function that gives its matrix for any angles.</td></tr>
+      <tr><td>in</td><td>the trainable circuit (Qiskit)</td></tr>
+      <tr><td>out</td><td>a list of Box</td></tr>
+      <tr><td>why</td><td>The angles change every call, but the circuit's shape never changes. The Box keeps the shape and computes only the matrix again.</td></tr>
+    </table>
+    <p><b>Example.</b> The 3-qubit circuit gives 12 boxes:</p>
+    <div class="scroll"><table>
+      <tr><th>box</th><th>type</th><th>qubits</th><th>θ names</th></tr>
+      <tr><td class="m">0, 1, 2</td><td>ZXZ (start)</td><td class="m">0; 1; 2</td><td class="m">θ0 θ1; θ2 θ3; θ4 θ5</td></tr>
+      <tr><td class="m">3</td><td>KAK (pair)</td><td class="m">0, 1</td><td class="m">θ6 θ7 (θ8 locked)</td></tr>
+      <tr><td class="m">4, 5</td><td>ZXZ</td><td class="m">0; 1</td><td class="m">θ9–θ11; θ12–θ14</td></tr>
+      <tr><td class="m">6</td><td>KAK (SWAP)</td><td class="m">1, 2</td><td class="m">θ15–θ17</td></tr>
+      <tr><td class="m">7, 8</td><td>ZXZ</td><td class="m">1; 2</td><td class="m">θ18–θ20; θ21–θ23</td></tr>
+      <tr><td class="m">9</td><td>KAK (electric)</td><td class="m">0, 1</td><td class="m">θ24 θ25 (θ26 locked)</td></tr>
+      <tr><td class="m">10, 11</td><td>ZXZ</td><td class="m">0; 1</td><td class="m">θ27–θ29; θ30–θ32</td></tr>
+    </table></div>
+    <p class="hint">A locked angle is a fixed 0.0 inside its box, so the Box does not list it.</p>
+    <details class="lines">
+      <summary>Line by line</summary>
+<pre>position = {angle: i for i, angle in enumerate(ansatz.parameters)}
+for instruction in ansatz.data:
+    qubits = tuple(ansatz.find_bit(qubit).index for qubit in instruction.qubits)
+    alone = QuantumCircuit(len(qubits))
+    alone.append(instruction.operation, list(range(len(qubits))))
+    angles = list(alone.parameters)
+    indices = tuple(position[angle] for angle in angles)
+    if not angles:
+        fixed = np.asarray(Operator(alone).data)
+        boxes.append(Box(qubits, indices, lambda x, fixed=fixed: fixed))
+        continue
+    def matrix_at(x, alone=alone, angles=angles, indices=indices):
+        values = {angle: float(x[i]) for angle, i in zip(angles, indices)}
+        return np.asarray(Operator(alone.assign_parameters(values)).data)
+    boxes.append(Box(qubits, indices, matrix_at))</pre>
+      <p class="hint">The loop also skips barriers (<code>if instruction.operation.name == "barrier": continue</code>).</p>
+      <div class="scroll"><table>
+        <tr><th>line</th><th>what it does</th></tr>
+        <tr><td class="m">position</td><td>gives each angle object its number, 0 … 30</td></tr>
+        <tr><td class="m">alone</td><td>a small circuit (1 or 2 qubits) with only this one instruction</td></tr>
+        <tr><td class="m">indices</td><td>the numbers of the angles that this box uses</td></tr>
+        <tr><td class="m">if not angles</td><td>a box with no trained angle has one fixed matrix; compute it once</td></tr>
+        <tr><td class="m">matrix_at(x)</td><td><code>x</code> is the full list of 31 angles. The function picks this box's angles from it, puts them in, and asks Qiskit's <code>Operator</code> for the matrix</td></tr>
+        <tr><td class="m">alone=alone, …</td><td>freezes the current box's values inside the function (a Python detail; without it, every function would see the last box)</td></tr>
+      </table></div>
+    </details>
+    <p class="limit"><b>Limit:</b> <code>Operator</code> builds the matrix from a circuit, which is slow (<a href="#speed">section 7</a>). The matrix is in Qiskit's bit order; <code>_on_block</code> converts it to the chain's order.</p>
+  </div>
+
+  <div class="method" id="merge_into_blocks">
+    <h3><code>merge_into_blocks(boxes)</code></h3>
+    <p class="file">two_qubit_blocks_to_matrices.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Groups the boxes into <b>blocks</b>, one block per KAK box. A ZXZ box after a KAK joins that KAK's block. A ZXZ box at the very start of a qubit waits, and joins the first block on its qubit.</td></tr>
+      <tr><td>in</td><td>the list of Box</td></tr>
+      <tr><td>out</td><td>a list of Block (site, parts, angle numbers)</td></tr>
+      <tr><td>why</td><td>The two passes then see only 4 × 4 matrices on neighbour qubits. They never need a separate step for a one-qubit box.</td></tr>
+    </table>
+    <p><b>Example.</b> 12 boxes become 3 blocks:</p>
+    <div class="scroll"><table>
+      <tr><th>block</th><th>site</th><th>parts (box, place), in the order applied</th><th>angles</th></tr>
+      <tr><td>0 pair</td><td class="m">0</td><td class="m">(0, first) (1, second) (3, both) (4, first) (5, second)</td><td class="m">12</td></tr>
+      <tr><td>1 SWAP</td><td class="m">1</td><td class="m">(2, second) (6, both) (7, first) (8, second)</td><td class="m">11</td></tr>
+      <tr><td>2 electric</td><td class="m">0</td><td class="m">(9, both) (10, first) (11, second)</td><td class="m">8</td></tr>
+    </table></div>
+    <p>12 + 11 + 8 = 31. Box 2 (the start ZXZ of q2) waits until block 1, because block 1 is the first block on q2. In block 1, "second" means site + 1, which is q2.</p>
+    <details class="lines">
+      <summary>Line by line</summary>
+      <div class="scroll"><table>
+        <tr><th>name</th><th>what it holds</th></tr>
+        <tr><td class="m">waiting</td><td>qubit → the start boxes that are not placed yet</td></tr>
+        <tr><td class="m">last_block_on</td><td>qubit → the last block that used this qubit</td></tr>
+        <tr><td class="m">first, second</td><td>the two qubits of a KAK box, smaller first. They must be neighbours, or the code stops with an error</td></tr>
+        <tr><td class="m">block.parts = …</td><td>a new block starts with the waiting boxes of its two qubits, then the KAK box ("both")</td></tr>
+        <tr><td class="m">one-qubit box</td><td>if its qubit already has a block, the box joins that block as "first" or "second"; else it waits</td></tr>
+        <tr><td class="m">angle_indices</td><td>the end: each block collects the angle numbers of all its parts</td></tr>
+      </table></div>
+    </details>
+    <p class="limit"><b>Limit:</b> only neighbour qubits (q, q + 1). Every qubit needs at least one KAK box. Our circuits meet both conditions. <b>Errors:</b> it stops for a KAK box on non-neighbour qubits, a box on 3 or more qubits, or a qubit with ZXZ boxes but no KAK box.</p>
+  </div>
+
+  <div class="method" id="target_as_chain">
+    <h3><code>target_as_chain(target_mps)</code></h3>
+    <p class="file">objective.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Converts our quimb target to the chain format: a list of arrays with the index order (left link, 0/1, right link).</td></tr>
+      <tr><td>in</td><td>the target from <code>build_target_using_lib</code> (quimb)</td></tr>
+      <tr><td>out</td><td>a list of arrays, site q = qubit q</td></tr>
+      <tr><td>why</td><td>quimb gives the two end sites only two indices, and it names indices by text. The passes want three indices on every site, in a fixed order.</td></tr>
+    </table>
+    <p><b>Example.</b> T becomes three sites with shapes (1, 2, 2), (2, 2, 2), (2, 2, 1). <code>array[None]</code> and <code>array[..., None]</code> add a link of size 1 at each end.</p>
+    <p class="limit"><b>Note:</b> the backward pass calls <code>move_centre(target_side, 0, n_qubits − 1)</code>, so it tells <code>move_centre</code> that the centre is at site 0. For the quimb target this is not true, but it does not matter. The move QR-splits every site from 0 to the second-to-last. Each split leaves a plain rotation behind, whatever the site's form was. After the move, the centre really is at the last site (why T needs a centre: <a href="#loop">section 5</a>).</p>
+  </div>
+</section>
+
+<!-- ================================================================== 3 -->
+<section id="matrices">
+  <h2>3. Angles → block matrices</h2>
+
+  <div class="method" id="block_matrices">
+    <h3><code>block_matrices(blocks, boxes, angles)</code></h3>
+    <p class="file">two_qubit_blocks_to_matrices.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>For every block, computes (1) its 4 × 4 matrix at these angles and (2) for each of its angles, its <b>change matrix</b>.</td></tr>
+      <tr><td>in</td><td>blocks, boxes, the 31 angles</td></tr>
+      <tr><td>out</td><td><code>matrices</code>: 3 matrices (4 × 4). <code>changes</code>: per block, a list of (angle number, 4 × 4)</td></tr>
+      <tr><td>why</td><td>The passes need the matrices. The chain rule (<a href="#slopes">section 6</a>) needs the change matrices.</td></tr>
+    </table>
+    <p><b>Example: the matrix of block 0 (pair).</b> It has 5 parts, P1 … P5 in the order applied. The block matrix is their product, the last part on the left:</p>
+<pre>block 0 = P5 · P4 · P3 · P2 · P1
+        = ZXZ(q1) · ZXZ(q0) · KAK · start ZXZ(q1) · start ZXZ(q0)</pre>
+    <p><b>Example: the change matrix of block 0 for θ[6].</b> Only P3 (the KAK) holds θ[6]. So only P3 changes. The other parts stay as they are (the product rule):</p>
+<pre>Step 1. Change matrix of the box alone (a nudge, NUDGE = 10⁻⁶):
+        dP3 = ( KAK(θ6 + 10⁻⁶) − KAK(θ6 − 10⁻⁶) ) / (2 × 10⁻⁶)
+
+Step 2. Put the other parts around it:
+        change = (P5 · P4) · dP3 · (P2 · P1)
+
+        P5 · P4: the parts after P3
+        P2 · P1: the parts before P3</pre>
+    <p>This change matrix agrees with a nudge of the whole block to 6 × 10⁻¹¹. All three block matrices are unitary to 4 × 10⁻¹⁶.</p>
+    <details class="lines">
+      <summary>Line by line</summary>
+<pre>parts = [_on_block(boxes[j].matrix_at(angles), boxes[j].qubits, where) for j, where in block.parts]
+before = [np.eye(4, dtype=complex)]            # before[k] = parts[k-1] ... parts[0]
+for part in parts:
+    before.append(part @ before[-1])
+after = [np.eye(4, dtype=complex)]             # after[k] = the last k parts
+for part in reversed(parts):
+    after.append(after[-1] @ part)
+matrices.append(before[-1])
+...
+            box_change = (box.matrix_at(up) - box.matrix_at(down)) / (2 * NUDGE)
+            change += after[len(parts) - 1 - k] @ _on_block(box_change, box.qubits, where) @ before[k]</pre>
+      <div class="scroll"><table>
+        <tr><th>line</th><th>what it does</th></tr>
+        <tr><td class="m">parts</td><td>every part's matrix, already as a 4 × 4 in the chain's order</td></tr>
+        <tr><td class="m">before</td><td>running products from the start. For block 0: before[2] = P2 · P1</td></tr>
+        <tr><td class="m">after</td><td>running products from the end. For block 0: after[2] = P5 · P4</td></tr>
+        <tr><td class="m">before[-1]</td><td>all 5 parts: the block matrix</td></tr>
+        <tr><td class="m">up, down</td><td>copies of the angles with one angle moved by +NUDGE and −NUDGE</td></tr>
+        <tr><td class="m">change +=</td><td>for θ[6], k = 2 (P3): after[5 − 1 − 2] = after[2] = P5 · P4, before[2] = P2 · P1. The <code>+=</code> adds up when two boxes of one block share an angle (none do in our circuits)</td></tr>
+      </table></div>
+      <p class="hint">Why the running products: they are built once per block. After that, each angle costs only two 4 × 4 products.</p>
+    </details>
+    <p class="limit"><b>Limit:</b> the change matrices come from nudges, not exact derivatives. They agree with exact ones to about 10⁻¹⁰. Each change matrix needs two more <code>Operator</code> calls. At 12 qubits this is 61% of the time; at 20 qubits with max_bond 256 it is 5% (<a href="#speed">section 7</a>).</p>
+  </div>
+
+  <div class="method" id="_on_block">
+    <h3><code>_on_block(matrix, qubits, where)</code></h3>
+    <p class="file">two_qubit_blocks_to_matrices.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Puts one box's matrix into its block's 4 × 4 frame, in the chain's bit order.</td></tr>
+      <tr><td>in</td><td>a box matrix (2 × 2 or 4 × 4), its qubits, its place</td></tr>
+      <tr><td>out</td><td>a 4 × 4 matrix</td></tr>
+      <tr><td>why</td><td>Qiskit and the chain number the two qubits in opposite orders.</td></tr>
+    </table>
+    <div class="scroll"><table>
+      <tr><th>place</th><th>result</th></tr>
+      <tr><td class="m">"first"</td><td><code>kron(matrix, I₂)</code>: acts on the block's first site</td></tr>
+      <tr><td class="m">"second"</td><td><code>kron(I₂, matrix)</code>: acts on the second site</td></tr>
+      <tr><td class="m">"both"</td><td>rows and columns reordered by <code>QISKIT_TO_CHAIN_ORDER = [0, 2, 1, 3]</code>, if the box lists its qubits smaller first. If it lists them as (q + 1, q), the order already matches, and the matrix stays as it is</td></tr>
+    </table></div>
+    <p><b>Example: why 1 and 2 change places.</b> Take the state "q0 = 1, q1 = 0". Qiskit puts the first qubit on the last bit: binary 01 = index 1. The chain puts the first site on the first bit: binary 10 = index 2. So Qiskit's row 1 is the chain's row 2, and the reverse. Rows 0 (00) and 3 (11) do not move.</p>
+  </div>
+</section>
+
+<!-- ================================================================== 4 -->
+<section id="forward">
+  <h2>4. Forward pass</h2>
+  <div class="method" id="forward_and_backward">
+    <h3><code>forward_and_backward(gates, n_qubits, target, max_bond, cutoff, xp, stride, keep, restore)</code></h3>
+    <p class="file"><a href="https://github.com/imelenwe/tensor-networks/blob/main/hadron-aqc/layer_gradient/simplified/forward_backward_pass.py">forward_backward_pass.py</a></p>
+    <table class="facts">
+      <tr><td>does</td><td>The forward pass (this section), then the backward layer pass (<a href="#backward">section 5</a>).</td></tr>
+      <tr><td>in</td><td><code>gates</code> (the blocks as (site, 4 × 4), in circuit order), the number of qubits, T, max_bond, cutoff (10⁻¹²), <code>xp</code>, stride, and <code>keep</code> / <code>restore</code> (how to save a state and get it back)</td></tr>
+      <tr><td>out</td><td><code>value</code> = o; <code>tables</code> = one 4 × 4 table per block, <b>in block order</b> (the same order as the change matrices, so <code>loss_and_slopes</code> can pair them with <code>zip</code>); <code>layer_overlaps</code>, last layer first</td></tr>
+      <tr><td>why</td><td>One function, so the kept forward states never leave it.</td></tr>
+    </table>
+  </div>
+  <p>The first half applies the layers to |0…0⟩, keeps a copy of the state before every stride-th layer, and computes o.</p>
+<pre>layers = split_into_layers(gates, n_qubits)
+state, centre, kept = all_zeros_chain(n_qubits, xp, target[0].dtype), 0, {}
+for number, layer in enumerate(layers):
+    if number % stride == 0:
+        kept[number] = (keep(state), centre)
+    centre = apply_layer(state, centre, gates, layer, max_bond, cutoff, xp)
+value = overlap(target, state, xp)</pre>
+  <p class="hint">In this file a <b>gate</b> is two values: a block's site and its 4 × 4 matrix. <code>gates</code> lists all blocks in circuit order.</p>
+  <div class="scroll"><table>
+    <tr><th>layer (code)</th><th>block</th><th>centre</th><th>site shapes after</th></tr>
+    <tr><td>start</td><td></td><td class="m">0</td><td class="m">(1,2,1) (1,2,1) (1,2,1)</td></tr>
+    <tr><td class="m">0</td><td>pair, site 0</td><td class="m">0 → 1</td><td class="m">(1,2,2) (2,2,1) (1,2,1)</td></tr>
+    <tr><td class="m">1</td><td>SWAP, site 1</td><td class="m">1 → 2</td><td class="m">(1,2,2) (2,2,2) (2,2,1)</td></tr>
+    <tr><td class="m">2</td><td>electric, site 0</td><td class="m">2 → 0</td><td class="m">(1,2,2) (2,2,2) (2,2,1)</td></tr>
+  </table></div>
+  <p>Then o = ⟨T|S3⟩ = 0.906316 − 0.136132i, the same as the exact value.</p>
+  <div class="key">
+    <p><b>Kept states.</b> With stride 6, the code keeps only the states before layers 0, 6, 12, …. In the 3-qubit example that is only S0. The backward pass rebuilds S1 and S2 from S0 (section 5). The workbook's table in 6.3 marks S1 and S2 "kept": that is the picture for stride 1.</p>
+    <p>At 12 qubits (35 layers), stride 6 keeps 6 states: before layers 0, 6, 12, 18, 24, 30. Stride 1 keeps 35.</p>
+    <p><b>Memory:</b> the backward pass also holds the rebuilt states of one stretch, up to <code>stride</code> of them. So the states in memory are about (layers ÷ stride) + stride. For 35 layers that is smallest near stride 6 (6 + 6 = 12, against about 36 for stride 1 or for stride 35). The rebuild costs at most one extra forward pass.</p>
+    <p><b>Why a copy is cheap:</b> no function changes an array in place. A function always writes a new array into the list. So on the CPU, <code>list(state)</code> (and <code>keep=list</code>) is a full snapshot that costs only a new list. On a GPU, <code>keep</code> copies the chain to normal memory, and <code>restore</code> copies it back.</p>
+    <p>The centre is kept with each state, because <code>apply_layer</code> needs it when the rebuild starts.</p>
+  </div>
+
+  <div class="method" id="split_into_layers">
+    <h3><code>split_into_layers(gates, n_qubits)</code></h3>
+    <p class="file">forward_backward_pass.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Puts each block into the first layer after the last block on its two qubits.</td></tr>
+      <tr><td>in</td><td>the blocks as (site, matrix), the number of qubits</td></tr>
+      <tr><td>out</td><td>a list of layers; each layer is a list of block numbers</td></tr>
+      <tr><td>why</td><td>Blocks in one layer share no qubit. So one sweep from the left and one from the right give the tables of all of them (section 5).</td></tr>
+    </table>
+    <p><b>Example.</b> The blocks sit at sites 0, 1, 0. <code>first_free_layer[q]</code> is the first layer where qubit q is free.</p>
+<pre>start:    first_free_layer = [0, 0, 0]
+block 0 (q0, q1): max(0, 0) = 0 → layer 0;  now [1, 1, 0]
+block 1 (q1, q2): max(1, 0) = 1 → layer 1;  now [1, 2, 2]
+block 2 (q0, q1): max(1, 2) = 2 → layer 2;  now [3, 3, 2]
+result: [[0], [1], [2]]</pre>
+    <p>Every block uses q1, so every block waits for the one before it.</p>
+    <p><b>At 12 qubits,</b> 153 blocks give 35 layers. The layers repeat in groups of six. The six layers hold: 6 pair blocks; 5 SWAP blocks; 4 pair and 2 electric blocks; 2 SWAP blocks; 4 electric blocks; 3 SWAP blocks. The 3-SWAP layer starts the next Trotter step, and the circuit's first step has no such layer. So 6 steps give 6 × 6 − 1 = 35 layers.</p>
+    <p class="limit"><b>Limit:</b> the layers follow which qubits are free, not the Trotter sub-layers. The two end electric blocks are free early, so they go one layer ahead of the other four. The circuit is the same.</p>
+  </div>
+
+  <div class="method" id="all_zeros_chain">
+    <h3><code>all_zeros_chain(n_qubits, xp, dtype)</code></h3>
+    <p class="file">tensor_chain.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Makes |0…0⟩: every site has shape (1, 2, 1), with the entry for "0" set to 1.</td></tr>
+      <tr><td>why</td><td>The trainable circuit starts from all zeros. The library folds our X gates into the first blocks.</td></tr>
+    </table>
+    <p class="hint"><code>[site] * n_qubits</code> puts the same array in every place. This is safe, because no function changes an array in place.</p>
+  </div>
+
+  <div class="method" id="apply_layer">
+    <h3><code>apply_layer(chain, centre, gates, layer, max_bond, cutoff, xp, undo=False)</code></h3>
+    <p class="file">forward_backward_pass.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Applies all blocks of one layer, one after another. It goes left to right or right to left, from the end nearer the centre. With <code>undo=True</code> it applies each block's conjugate transpose.</td></tr>
+      <tr><td>in</td><td>a chain, its centre, the layer</td></tr>
+      <tr><td>out</td><td>the new centre. The function writes new arrays into the caller's list <code>chain</code>: the list changes; no array does</td></tr>
+      <tr><td>why</td><td>Each block needs the centre next to it. Each move of the centre by one site costs one QR split. Start at the near end, and the centre moves the least.</td></tr>
+    </table>
+    <p><b>Example.</b> Layer 2 (electric, site 0) with the centre at site 2. The middle of the layer is (0 + 1) / 2 = 0.5. The centre 2 is right of 0.5, so the layer goes right to left. <code>weights_go_right=False</code>, and the centre ends at site 0.</p>
+    <p><b>Why <code>weights_go_right = rightwards</code>:</b> after each block, the weights go to the side of the next block in the sweep. So the centre is already next to the next block, and no extra move is needed.</p>
+  </div>
+
+  <div class="method" id="apply_block">
+    <h3><code>apply_block(chain, centre, site, block, max_bond, cutoff, xp, weights_go_right=True)</code></h3>
+    <p class="file">tensor_chain.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Applies one 4 × 4 block to sites (site, site + 1), splits them again, and trims.</td></tr>
+      <tr><td>in</td><td>a chain, its centre, the block</td></tr>
+      <tr><td>out</td><td>the new centre</td></tr>
+      <tr><td>why</td><td>This is the one place where the state changes. Every other function only reads or moves.</td></tr>
+    </table>
+    <p><b>Example: the pair block on S0 = |000⟩.</b></p>
+<pre>Step 1. Move the centre to the block:
+        centre stays 0
+Step 2. Join sites 0 and 1 into one array:
+        (1, 2, 2, 1) = (left, in1, in2, right)
+Step 3. Apply the block:
+        (2, 2, 1, 1) = (out1, out2, left, right)
+Step 4. Make a matrix:
+        rows (left, out1) = 1 × 2 = 2
+        columns (out2, right) = 2 × 1 = 2
+Step 5. Split it with an SVD:
+        weights 0.935897, 0.352274
+Step 6. Trim (max_bond 64): keep 2
+Step 7. Weights go into the right site:
+        (1,2,2) (2,2,1) (1,2,1), centre 1</pre>
+    <p><b>The same with max_bond 1:</b> step 6 keeps 1 weight. The shapes become (1,2,1) (1,2,1) (1,2,1). The code does not rescale, so the state's length² drops to 0.935897² = 0.875903.</p>
+    <details class="lines">
+      <summary>Line by line</summary>
+<pre>centre = move_centre(chain, centre, site if centre &lt;= site else site + 1, xp)
+left, right = chain[site].shape[0], chain[site + 1].shape[2]
+pair = xp.tensordot(chain[site], chain[site + 1], axes=(2, 0))                     # (left, in1, in2, right)
+pair = xp.tensordot(block.reshape(2, 2, 2, 2), pair, axes=([2, 3], [1, 2]))        # (out1, out2, left, right)
+u, weights, vh = xp.linalg.svd(pair.transpose(2, 0, 1, 3).reshape(left * 2, 2 * right), full_matrices=False)
+kept = max(1, min(max_bond, int((weights &gt; cutoff * weights[0]).sum())))           # trimming
+u, weights, vh = u[:, :kept], weights[:kept], vh[:kept]
+if weights_go_right:
+    chain[site], chain[site + 1] = u.reshape(left, 2, kept), (weights[:, None] * vh).reshape(kept, 2, right)
+    return site + 1
+chain[site], chain[site + 1] = (u * weights).reshape(left, 2, kept), vh.reshape(kept, 2, right)
+return site</pre>
+      <div class="scroll"><table>
+        <tr><th>line</th><th>what it does</th></tr>
+        <tr><td class="m">move_centre(...)</td><td>moves the centre to the nearer of the two sites</td></tr>
+        <tr><td class="m">pair = tensordot(…, axes=(2, 0))</td><td>joins the two sites over their shared link</td></tr>
+        <tr><td class="m">block.reshape(2, 2, 2, 2)</td><td>views the 4 × 4 block as [out1, out2, in1, in2], then sums over in1, in2</td></tr>
+        <tr><td class="m">transpose, reshape</td><td>makes a matrix: rows (left, out1), columns (out2, right)</td></tr>
+        <tr><td class="m">svd</td><td>splits it: <code>u</code> (left site), <code>weights</code>, <code>vh</code> (right site)</td></tr>
+        <tr><td class="m">kept = …</td><td>count the weights above 10⁻¹² × the largest; take at most max_bond; take at least 1</td></tr>
+        <tr><td class="m">weights_go_right</td><td>True: the weights join <code>vh</code>, and the centre is site + 1. False: they join <code>u</code>, and the centre is site</td></tr>
+      </table></div>
+    </details>
+    <p class="limit"><b>Why the centre matters:</b> when the centre is at the block, the SVD weights are the weights of the whole state. Then dropping the smallest weights loses the least of the state. <b>Limit:</b> trimming lowers length², and the code does not rescale it. With a small max_bond, L and the slopes are wrong: at max_bond 1, L = 0.486 (exact 0.160), and slopes are off by up to 0.9. At max_bond 2 they are exact.</p>
+  </div>
+
+  <div class="method" id="move_centre">
+    <h3><code>move_centre(chain, centre, to, xp)</code></h3>
+    <p class="file">tensor_chain.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Moves the centre one site at a time with a QR split. To move right: the site keeps Q (a plain rotation), and R goes into the next site. To move left: reshape the site as (left, 2 × right), transpose it, then QR. The site keeps Qᵀ, and Rᵀ goes into the site on the left.</td></tr>
+      <tr><td>in</td><td>a chain, the centre now, the site to move to</td></tr>
+      <tr><td>out</td><td>the new centre (= <code>to</code>)</td></tr>
+      <tr><td>why</td><td>QR is cheaper than SVD, and it is exact: it trims nothing. The state does not change.</td></tr>
+    </table>
+    <p><b>Example.</b> A chain with links larger than needed: (1,2,4) (4,2,4) (4,2,1). Move 0 → 1: the first site has only 1 × 2 = 2 rows, so Q has 2 columns. The link shrinks to 2: (1,2,2) (2,2,4) (4,2,1). After a QR split, the new link size is the smaller of two sizes: the old link size, or 2 × the link size on the site's other side. The split never changes the state. (Only the trim in <code>apply_block</code> drops weights.)</p>
+<pre>moving right, one step:
+q, r = qr( chain[centre].reshape(left * 2, right) )
+chain[centre]     = q  → shape (left, 2, new link)
+chain[centre + 1] = r · chain[centre + 1]</pre>
+  </div>
+
+  <div class="method" id="overlap">
+    <h3><code>overlap(bra, ket, xp)</code></h3>
+    <p class="file">tensor_chain.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Computes ⟨bra|ket⟩. It sweeps left to right and carries a small matrix, <code>partial</code>, of shape (bra link, ket link).</td></tr>
+      <tr><td>why</td><td>It never builds the full list of 2ⁿ numbers. Each site costs about link size³ multiplications.</td></tr>
+    </table>
+    <p><b>Example.</b> ⟨T|S3⟩: <code>partial</code> starts (1, 1), becomes (2, 2) after site 0, stays (2, 2) after site 1, and ends (1, 1) after site 2. The last 1 × 1 number is o = 0.906316 − 0.136132i.</p>
+  </div>
+</section>
+
+<!-- ================================================================== 5 -->
+<section id="backward">
+  <h2>5. Backward layer pass</h2>
+  <p>The second half of <code>forward_and_backward</code>. It goes from the last layer to the first. At each layer it joins the state before the layer with the target side after it, into one table per block. Then it undoes the layer on the target side.</p>
+
+  <div class="method" id="loop">
+    <h3>The backward loop</h3>
+    <p class="file">forward_backward_pass.py, inside forward_and_backward</p>
+<pre>target_side = list(target)
+target_centre = move_centre(target_side, 0, n_qubits - 1, xp)
+for number in reversed(range(len(layers))):
+    if number not in states_before:        # rebuild this stretch of states, once
+        first = number - number % stride
+        state, centre = kept.pop(first)
+        state = restore(state)
+        states_before = {first: state}
+        for earlier in range(first, number):
+            state = list(state)          # a new list: the stored state stays as it is
+            centre = apply_layer(state, centre, gates, layers[earlier], max_bond, cutoff, xp)
+            states_before[earlier + 1] = state
+    these_tables, layer_overlap = layer_tables(target_side, states_before.pop(number), gates, layers[number], xp)
+    ...store the tables
+    target_centre = apply_layer(target_side, target_centre, gates, layers[number], max_bond, cutoff, xp, undo=True)</pre>
+    <p><b>Why <code>target_side = list(target)</code>:</b> it makes a new list, so the undo never touches <code>self.target</code>, and T stays as it is for the next call.</p>
+    <p><b>Why the target side needs a centre:</b> undo applies blocks and trims, the same as the forward pass. Trimming is best at the centre. So the code first moves T's centre to the last site.</p>
+    <p><b>Example.</b> A <b>round</b> is one pass through the loop, for one layer. There are three rounds, last layer first. Layer n (code number) takes S<sub>n</sub> to S<sub>n+1</sub>. The round computes ⟨bra| layer n |ket⟩ = ⟨B<sub>n+1</sub>|S<sub>n+1</sub>⟩.</p>
+    <div class="scroll"><table>
+      <tr><th>layer n</th><th>ket<br>(state before)</th><th>bra<br>(target side)</th><th>after undo</th></tr>
+      <tr><td>2 electric</td><td class="m">S2, rebuilt from S0</td><td class="m">B3 = T</td><td class="m">B2</td></tr>
+      <tr><td>1 SWAP</td><td class="m">S1</td><td class="m">B2</td><td class="m">B1 (link 1–2 shrinks 2 → 1)</td></tr>
+      <tr><td>0 pair</td><td class="m">S0</td><td class="m">B1</td><td class="m">B0</td></tr>
+    </table></div>
+    <p>In all three rounds, ⟨bra| layer n |ket⟩ = 0.906316 − 0.136132i = o.</p>
+    <p>Round 1 needs S2, but the forward pass did not keep it. So the code takes the nearest kept state, S0 (<code>first = 2 − 2 % 6 = 0</code>), and applies layers 0 and 1 again. It stores S0, S1, S2 in <code>states_before</code>. Rounds 2 and 3 then find their states ready.</p>
+    <div class="key"><p><b>The check:</b> every layer overlap equals o (here to 10⁻¹⁵). S<sub>k</sub> is the final state with the later layers taken off. B<sub>k</sub> is T with the same layers undone. Taking the same layers off both sides keeps the overlap (<a href="circuit-backprop-workbook.html#improve-undo">workbook 6.5</a>). With trimming, the layer overlaps can drift apart a little. The test <code>test_backward_layer_pass_keeps_the_overlap</code> checks this. A wrong undo or a wrong bit order breaks it at once.</p></div>
+  </div>
+
+  <div class="method" id="layer_tables">
+    <h3><code>layer_tables(bra, ket, gates, layer, xp)</code></h3>
+    <p class="file">forward_backward_pass.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Gives one table for every block of one layer, from one sweep from the left and one from the right. It also gives ⟨bra| layer |ket⟩.</td></tr>
+      <tr><td>in</td><td>bra = the target side after the layer, ket = the state before it, the layer</td></tr>
+      <tr><td>out</td><td>{block number: 4 × 4 table}, and the layer overlap</td></tr>
+      <tr><td>why</td><td>Without the two sweeps, each block's table needs one full sweep along the chain. With them, a layer of 6 blocks needs 2 sweeps, not 6.</td></tr>
+    </table>
+    <p><b>Step 1: cut the chain into pieces.</b> A piece is one block (two sites) or one empty site. Layer 2 (electric on sites 0, 1) on 3 qubits gives 2 pieces: (site 0, block 2) and (site 2, empty).</p>
+    <p><b>Step 2: two sweeps, every partial result kept.</b> <code>from_left[p]</code> holds pieces 0 … p − 1, joined. <code>from_right[p]</code> holds pieces p, p + 1, …, joined. Each is a small (bra link, ket link) matrix.</p>
+<pre>from_left:   [ (1,1) nothing,  (2,2) piece 0,  (1,1) pieces 0 and 1 ]
+from_right:  [ (1,1) pieces 0 and 1,  (2,2) piece 1,  (1,1) nothing ]</pre>
+    <p><b>Step 3: one table per block.</b> The table of piece p uses <code>from_left[p]</code> (all left of it) and <code>from_right[p + 1]</code> (all right of it). For the electric block: from_left[0] = (1, 1) and from_right[1] = (2, 2).</p>
+    <p><b>Step 4: the layer overlap.</b> <code>from_left[-1]</code> holds all pieces: it is the 1 × 1 number ⟨bra| layer |ket⟩.</p>
+    <p class="limit"><b>Limit:</b> the tables come from trimmed chains. With a small max_bond they are approximate, like everything else.</p>
+  </div>
+
+  <div class="method" id="grow">
+    <h3><code>_grow_from_left(partial, bra, ket, site, block, xp)</code> and <code>_grow_from_right</code></h3>
+    <p class="file">forward_backward_pass.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Joins one more piece to a partial result. For an empty site, it joins the ket site, then the conjugated bra site. For a block, it joins both ket sites, then the block, then both conjugated bra sites.</td></tr>
+      <tr><td>in</td><td>a (bra link, ket link) matrix</td></tr>
+      <tr><td>out</td><td>the same kind of matrix, one piece further</td></tr>
+      <tr><td>why</td><td>This is the same sweep as <code>overlap</code>, with the layer's blocks between bra and ket.</td></tr>
+    </table>
+<pre>t = tensordot(partial, ket[site])                     # (B, in, K)
+t = tensordot(t, ket[site + 1])                       # (B, in1, in2, K)
+t = tensordot(block.reshape(2, 2, 2, 2), t)           # (out1, out2, B, K)
+t = tensordot(bra[site].conj(), t)                    # (B, out2, K)
+return tensordot(bra[site + 1].conj(), t)             # (B, K)</pre>
+    <p class="hint">The block case only. The <code>axes=</code> arguments and the empty-site branch (<code>if block is None</code>) are left out. In the shape comments, B is a bra link and K a ket link; this B is not the target side B<sub>k</sub>. <code>t</code> is the partial result in the middle of the step. <code>_grow_from_right</code> does the same from the right end.</p>
+  </div>
+
+  <div class="method" id="_table">
+    <h3><code>_table(from_left, from_right, bra, ket, site, xp)</code></h3>
+    <p class="file">forward_backward_pass.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Joins everything around one block, with the block left out. The result has the block's shape: 4 × 4, [(out1 out2), (in1 in2)].</td></tr>
+      <tr><td>in</td><td>the partial results left and right of the block, bra, ket</td></tr>
+      <tr><td>out</td><td>the 4 × 4 table</td></tr>
+      <tr><td>why</td><td>For layer n, o = ⟨B<sub>n+1</sub>| layer n |S<sub>n</sub>⟩. S<sub>n</sub> holds only the layers before n. B<sub>n+1</sub> holds only T and the layers after n. So the block appears exactly once, and o is linear in its 16 entries: o = Σ table × block, entry by entry (not a matrix product). Each table entry tells how much o changes per unit change of that block entry. This is the workbook's "table with a hole where the block sits" (<a href="circuit-backprop-workbook.html#improve-fast">6.8</a>).</td></tr>
+    </table>
+    <p><b>Example: the pair block's table (layer 0).</b> The ket is S0 = |000⟩, so only the "in = 00" column is non-zero:</p>
+<pre>[[ 0.5204−0.1503i  0  0  0 ]
+ [−0.1261+0.4367i  0  0  0 ]
+ [ 0.5204−0.1503i  0  0  0 ]
+ [ 0.1261−0.4367i  0  0  0 ]]
+
+check: Σ (table × block 0) over the 16 entries = 0.906316 − 0.136132i = o  ✓</pre>
+    <p class="hint">Inside the code: <code>x</code> is from_left, both ket sites and from_right, joined. <code>y</code> is the two conjugated bra sites, joined. The last <code>tensordot</code> joins x and y over their bra links.</p>
+  </div>
+</section>
+
+<!-- ================================================================== 6 -->
+<section id="slopes">
+  <h2>6. Chain rule → slopes</h2>
+  <div class="method" id="loss_and_slopes">
+    <h3><code>loss_and_slopes(value, tables, changes, n_angles)</code></h3>
+    <p class="file">objective.py</p>
+    <table class="facts">
+      <tr><td>does</td><td>Joins the tables (<a href="#backward">section 5</a>) with the change matrices (<a href="#matrices">section 3</a>). Returns L and all slopes.</td></tr>
+      <tr><td>in</td><td>o, one table per block, the change matrices, the number of angles</td></tr>
+      <tr><td>out</td><td>L, and a list of 31 slopes</td></tr>
+      <tr><td>why</td><td>The table says how o reacts to each block entry. The change matrix says how each block entry reacts to the angle. The chain rule multiplies the two.</td></tr>
+    </table>
+    <p><b>The derivation (symbols).</b></p>
+<pre>Step 1. The overlap slope. o depends on block b
+        only through its 16 entries:
+        do/dθ = Σ over the 16 entries of
+                table_b × change matrix_b(θ)
+
+Step 2. L = 1 − |o|² = 1 − o · conj(o)
+
+Step 3. dL/dθ = −( do/dθ · conj(o) + o · conj(do/dθ) )
+              = −2 Re( conj(o) · do/dθ )</pre>
+    <p><b>The example (numbers).</b> o = 0.906316 − 0.136132i, so L = 1 − (0.821409 + 0.018532) = 1 − 0.839941 = 0.16006. With all digits, L = 0.1600598702, the exact value. The slopes:</p>
+    <div class="scroll"><table>
+      <tr><th>angles</th><th>slope</th></tr>
+      <tr><td class="m">θ[6], θ[7]</td><td class="m">−0.511825</td></tr>
+      <tr><td class="m">θ[17], θ[24]</td><td class="m">−0.346285</td></tr>
+      <tr><td class="m">θ[9], θ[23]</td><td class="m">−0.173143</td></tr>
+      <tr><td class="m">θ[12], θ[14], θ[21], θ[29]</td><td class="m">+0.173143</td></tr>
+      <tr><td>the other 21 angles</td><td class="m">0</td></tr>
+    </table></div>
+    <p class="hint">In the code's slope list, θ[24] is number 23 (section 0).</p>
+    <p>All 31 slopes agree with a nudge of the exact loss to 1.1 × 10⁻¹⁰. One step, new θ = θ − 0.5 × slope, gives L = 0.1286, as in the workbook (<a href="circuit-backprop-workbook.html#improve-update">6.7</a>).</p>
+<pre>overlap_slopes = np.zeros(n_angles, dtype=complex)
+for table, block_changes in zip(tables, changes):
+    for angle, change in block_changes:
+        overlap_slopes[angle] += np.sum(change * table)
+return 1.0 - abs(value) ** 2, -2.0 * np.real(np.conj(value) * overlap_slopes)</pre>
+    <p class="hint"><code>change * table</code> multiplies entry by entry (16 products), and <code>np.sum</code> adds them. That is step 1. The return line is steps 2 and 3. <code>value</code> is o.</p>
+  </div>
+</section>
+
+<!-- ================================================================== 7 -->
+<section id="speed">
+  <h2>7. Where the time goes</h2>
+  <p>Measured on our circuit: x = 200, meson, 6-step start, ZZ zeroed out, stride 6, one CPU (Apple M4 Pro). Each number is the median of 3 to 5 calls.</p>
+  <div class="scroll"><table>
+    <tr><th>one call<br>(q = qubits, max_bond)</th><th>12 q<br>64</th><th>16 q<br>64</th><th>16 q<br>256</th><th>20 q<br>256</th></tr>
+    <tr><td>whole call</td><td class="m">0.81 s</td><td class="m">1.73 s</td><td class="m">3.90 s</td><td class="m">17.1 s</td></tr>
+    <tr><td>block matrices (section 3)</td><td class="m">77%</td><td class="m">50%</td><td class="m">22%</td><td class="m">6%</td></tr>
+    <tr><td>· of it: <code>Operator</code> for the changes</td><td class="m">61%</td><td class="m">40%</td><td class="m">17%</td><td class="m">5%</td></tr>
+    <tr><td>the two passes (sections 4, 5)</td><td class="m">22%</td><td class="m">50%</td><td class="m">78%</td><td class="m">94%</td></tr>
+    <tr><td>· of it: SVD and QR splits</td><td class="m">18%</td><td class="m">44%</td><td class="m">69%</td><td class="m">83%</td></tr>
+    <tr><td>loss_and_slopes (section 6)</td><td class="m">0.2%</td><td class="m">0.2%</td><td class="m">0.1%</td><td class="m">0%</td></tr>
+  </table></div>
+  <ul>
+    <li><b>The block matrices</b> cost about 1.3 ms per box, for any max_bond. At 12 qubits one call builds 3,081 small circuits for Qiskit's <code>Operator</code>: one per box (471) for the matrices, and two per angle (2,610) for the change matrices.</li>
+    <li><b>The passes</b> grow with qubits × link size³, once the links reach max_bond in the middle of the chain (before that, more slowly). At max_bond 64: 0.18, 0.86, 1.75, 2.28 s at 12, 16, 20, 24 qubits. At max_bond 256: 3.0, 16.0, 26.6 s at 16, 20, 24 qubits.</li>
+    <li><b>The most expensive pass</b> is the undo on the target side, because the target starts at its full link size.</li>
+    <li><b>At 120 qubits the SVDs are everything:</b> one SVD at link size 1024 takes 2.8 s on this CPU. This is why max_bond 1024 needs a GPU.</li>
+    <li><code>source/</code> and <code>simplified/</code> take the same time.</li>
+  </ul>
+
+  <h3>Stride (16 qubits)</h3>
+  <div class="scroll"><table>
+    <tr><th>stride</th><th>time</th><th>memory</th></tr>
+    <tr><td class="m">1</td><td>14–16% faster (no rebuild)</td><td>about 2×</td></tr>
+    <tr><td class="m">6 (default)</td><td>baseline</td><td>smallest</td></tr>
+    <tr><td class="m">1000</td><td>like stride 6</td><td>like stride 1: it rebuilds all 35 layers at once and holds them</td></tr>
+  </table></div>
+  <p class="hint">Why stride 6 uses the least memory: <a href="#forward">section 4</a>.</p>
+
+  <h3>What can be faster: measured, slopes unchanged</h3>
+  <p>Each idea below was tried in a scratch copy, not in the repo. "Unchanged" means the slopes agree with the current code to its own nudge error, about 2 × 10⁻¹⁰.</p>
+  <div class="scroll"><table>
+    <tr><th>#</th><th>change</th><th>gain on one call</th><th>cost</th></tr>
+    <tr><td class="m">1</td><td><b>Formulas instead of <code>Operator</code>, and exact changes instead of nudges.</b> ZXZ = Rz · Rx · Rz. KAK = e<sup>−iπ/4</sup> · exp(i(a XX + b YY + c ZZ)). Matrices equal <code>Operator</code>'s to 4 × 10⁻¹⁶</td><td>×4.2 (12 q, 64)<br>×1.9 (16 q, 64)<br>×1.25 (16 q, 256)<br>×1.06 (20 q, 256)</td><td>about 60 lines; slightly more exact slopes</td></tr>
+    <tr><td class="m">2</td><td><b>Stride 1</b>: no rebuild</td><td>×1.27–1.34 on top of #1</td><td>2–2.6× the memory</td></tr>
+    <tr><td class="m">3</td><td><b>Undo on the target side in a second thread</b>, at the same time as the tables</td><td>14–18% of the call</td><td>1.2–1.45× the memory</td></tr>
+    <tr><td class="m">1+2+3</td><td>all three</td><td>×5.8 (12 q, 64)<br>×2.7 (16 q, 64)<br>×1.8 (16 q, 256)<br>×1.6 (20 q, 256)</td><td></td></tr>
+  </table></div>
+  <ul>
+    <li><b>Single precision</b> (complex64) with scipy's SVD: the passes are ×1.3 faster, but the slopes are off by about 3 × 10⁻⁶. numpy's SVD is not faster in single precision on this Mac. So <code>--single-precision</code> today halves the memory but saves no time.</li>
+    <li><b>Not worth it:</b> other SVD drivers (same or 5–30× slower), BLAS thread settings (the splits use one core), the tables (4–7% of the time), the centre moves (1.2 QR splits per SVD).</li>
+    <li><b>Not tried yet:</b> the GPU path. It is in the code, but no one has tested it.</li>
+    <li><b>Not tried yet:</b> a chain form that keeps the weights on every link. It needs no QR splits, which are 25% of the passes at max_bond 256. It also lets one layer's SVDs run at the same time.</li>
+  </ul>
+  <div class="key">
+    <p><b>The takeaway:</b> at 12–16 qubits with max_bond 64, Qiskit's <code>Operator</code> is the slow part, and formulas fix it (×2–4). At max_bond 256, and from 20 qubits, the SVDs are the slow part. A GPU or fewer SVDs are the likely fixes; neither is measured yet.</p>
+    <p><b>For reference, at 12 qubits:</b> jax takes 0.029 s per call after a 17.6 s compile; IBM's explicit gradient takes 1.9 s. jax is the fastest at small sizes, but at 120 qubits it asked for 1.5 TB of memory.</p>
+  </div>
+</section>
+
+<!-- ================================================================== 8 -->
+<section id="meeting">
+  <h2>8. For the meeting</h2>
+  <h3>The method in three lines</h3>
+  <ol style="margin:0; padding-left:20px">
+    <li>Forward: apply the layers to |0…0⟩ on a trimmed chain, keep every 6th state, compute o = ⟨T|S<sub>final</sub>⟩.</li>
+    <li>Backward: from the last layer, join the state before each layer with the target side after it into one 16-number table per block; then undo the layer on the target side.</li>
+    <li>Chain rule: overlap slope = Σ table × change matrix; slope = −2 Re(conj(o) × overlap slope).</li>
+  </ol>
+  <h3>The limits, in one list</h3>
+  <ul>
+    <li><b>Trimming is not rescaled</b> (<a href="#apply_block">apply_block</a>): with a max_bond that is too small, L and the slopes are wrong. At max_bond 1 on 3 qubits, L = 0.486 against 0.160 exact.</li>
+    <li><b>The change matrices come from nudges</b> (<a href="#block_matrices">block_matrices</a>): accurate to about 10⁻¹⁰, not exact.</li>
+    <li><b>Qiskit's <code>Operator</code> is slow</b> (<a href="#speed">section 7</a>): 61% of a call at 12 qubits.</li>
+    <li><b>Only neighbour qubits</b> (<a href="#merge_into_blocks">merge_into_blocks</a>): fine for our circuits.</li>
+    <li><b>The GPU path is untested</b>, and max_bond 1024 at 120 qubits needs it.</li>
+  </ul>
+  <h3>Open questions</h3>
+  <ul>
+    <li>Rescale the chain after each trim, or not?</li>
+    <li>Formulas instead of <code>Operator</code> (×2–4 at 12–16 qubits, slopes unchanged): move them into the code?</li>
+    <li>Stride 6 or stride 1: about 15–30% faster for 2× the memory.</li>
+    <li>Who tests the GPU path, and on which machine?</li>
+  </ul>
+</section>
+
+</main>
+</div>
+</body>
+</html>
